@@ -236,6 +236,41 @@ class Square:
             self.highlight_template.undraw()
 
 
+# I guess this function is kind of like deepcopy, but I couldn't figure out how to make deepcopy work
+def duplicate(squares_list):
+    virtual_squares = [[[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []],
+                       [[], [], [], []]]
+    for i, row in enumerate(squares_list):
+        for j, square in enumerate(row):
+            if square.piece is not None:
+                virtual_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
+                                      square.piece.king, square.piece.highlight)
+                virtual_squares[i][j] = Square(square.row, square.pos, square.connections,
+                                               virtual_piece, square.highlight)
+            else:
+                virtual_squares[i][j] = Square(square.row, square.pos, square.connections,
+                                               None, square.highlight)
+    return virtual_squares
+
+
+# Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
+def find_moves(squares_list, side=False):
+    moves = []
+    for row in squares_list:
+        for square in row:
+            if square.piece is not None:
+                if square.piece.color is side:
+                    if search(square, squares_list) != {}:
+                        moves.append([square, search(square, squares_list)])
+    return moves
+
+
 def click_get_square(point):
     # Figure out which square was clicked from coordinates of mouse click
     # Returns square as tuple: row, pos (same convention as piece position)
@@ -266,6 +301,7 @@ def click_get_square(point):
     return row, int(pos)
 
 
+# Finds all the possible moves for the piece on a certain square
 def search(start, squares_list):
     # square_list is whether searching "squares" or "virtual_squares"
 
@@ -316,7 +352,6 @@ def search(start, squares_list):
                             visited = []
 
                             def find_all_jumps(start_from, previous_captured):
-                                end_reached_overall = True
                                 for connection_type in start_from.connections:
                                     if connection_type in allowed_jumps:
                                         end_reached = False
@@ -354,11 +389,8 @@ def search(start, squares_list):
                                         end_reached = True
 
                                     if end_reached is False:
-                                        end_reached_overall = False
                                         # Recursion if needed
                                         find_all_jumps(new_other_side_square, all_captured)
-                                if end_reached_overall:
-                                    return
 
                             find_all_jumps(other_side_square, [connection_square])
 
@@ -423,90 +455,42 @@ def computer_move(have_to_move):
     # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
     # of pieces that the computer could gain / lose
     # TODO Make sure the computer only stops looking forward on a move that has no captures, to account for sets of
-    # TODO captures and capture backs, otherwise the evaluation of the moves will be skewed
+    # captures and capture backs, otherwise the evaluation of the moves will be skewed
     else:
         # These are all the possible moves that the computer must look at:
         # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
-        moves = []
-        for row in squares:
-            for square in row:
-                if square.piece is not None:
-                    if square.piece.color is False:
-                        if search(square, squares) != {}:
-                            moves.append([square, search(square, squares)])
+        moves = find_moves(squares)
+        moves_scored = []  # Holds a score for how good a move is
+        # Initialize moves_scored
+        # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
+        for whole_move in moves:
+            start = whole_move[0]
+            end_and_captured = whole_move[1]
+            for end in end_and_captured:
+                captured = end_and_captured[end]
+                moves_scored.append([[start, end, captured], 0])
 
-        
+        # TODO The magic will happen here
 
-        # # Check for possible captures that are 1 move away (first step in intelligence)
-        # to_delete = []  # Delete them because they allow a capture by the opponent
-        # for i, whole_move in enumerate(moves):
-        #     start_square = whole_move[0]
-        #     for j, end_square in enumerate(whole_move[1]):
-        #         # Generate the virtual objects (objects that are manipulated to see what happens)
-        #         virtual_squares = [[[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []],
-        #                            [[], [], [], []]]
-        #         for virtual_i, row in enumerate(squares):
-        #             for virtual_j, square in enumerate(row):
-        #                 if square.piece is not None:
-        #                     virtual_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
-        #                                           square.piece.king, square.piece.highlight)
-        #                     virtual_squares[virtual_i][virtual_j] = Square(square.row, square.pos, square.connections,
-        #                                                                    virtual_piece, square.highlight)
-        #                 else:
-        #                     virtual_squares[virtual_i][virtual_j] = Square(square.row, square.pos, square.connections,
-        #                                                                    None, square.highlight)
-        #         virtual_moves = []
-        #         for virtual_row in virtual_squares:
-        #             for virtual_square in virtual_row:
-        #                 if virtual_square.piece is not None:
-        #                     if virtual_square.piece.color is False:
-        #                         if search(virtual_square, virtual_squares) != {}:
-        #                             virtual_moves.append([virtual_square, search(virtual_square, virtual_squares)])
-        #
-        #         virtual_start = virtual_moves[i][0]
-        #         virtual_end = list(virtual_moves[i][1].keys())[j]
-        #         virtual_captured = list(virtual_moves[i][1].values())[j]
-        #         move_piece(virtual_start, virtual_end, virtual_captured)
-        #         # Figure out if the move is good or not (does it let opponent capture a piece?)
-        #         for virtual_row in virtual_squares:
-        #             for virtual_square in virtual_row:
-        #                 if virtual_square.piece is not None:
-        #                     if virtual_square.piece.color is True:
-        #                         opponent_moves = search(virtual_square, virtual_squares)
-        #                         for opponent_move in opponent_moves:
-        #                             if opponent_moves[opponent_move] != [None]:
-        #                                 to_delete.append((start_square, end_square))
-        #
-        # num_possible_moves = 0
-        # for whole_move in moves:
-        #     num_possible_moves += len(whole_move[1])
-        #
-        # # If there are any moves possible that don't result in a capture
-        # if len(to_delete) < num_possible_moves:
-        #     for bad_start, bad_end in to_delete:
-        #         for whole_move in moves:
-        #             if whole_move[0].row == bad_start.row and whole_move[0].pos == bad_start.pos:
-        #                 for i, end_square in enumerate(whole_move[1].copy()):
-        #                     if end_square.row == bad_end.row and end_square.pos == bad_end.pos:
-        #                         whole_move[1].pop(end_square)
-        #
-        # # Pick random move of out ones that survived search
-        # piece_has_moves = False
-        # while piece_has_moves is False:
-        #     move_chosen = random.randrange(0, len(moves))
-        #     if moves[move_chosen][1] != {}:
-        #         piece_has_moves = True
-        # start_square = moves[move_chosen][0]
-        # possible_end_and_captured = moves[move_chosen][1]
-        # possible_end_squares = list(possible_end_and_captured.keys())
-        # end_square = possible_end_squares[random.randrange(0, len(possible_end_squares))]
-        # captured = possible_end_and_captured[end_square]
+        # Pick out the move(s) with the highest score in dict moves_scored, and pick random move from the move(s)
+        highest = None
+        best_moves = []
+        for i, move in enumerate(moves_scored):
+            if highest is None:
+                highest = moves_scored[i][1]
+                best_moves.append(move)
+            else:
+                if moves_scored[i][1] == highest:
+                    best_moves.append(move)
+                elif moves_scored[i][1] > highest:
+                    highest = moves_scored[i][1]
+                    best_moves.clear()
+                    best_moves.append(move)
+
+        move_chosen = best_moves[random.randrange(0, len(best_moves))]
+        start_square = move_chosen[0][0]
+        end_square = move_chosen[0][1]
+        captured = move_chosen[0][2]
 
     move_piece(start_square, end_square, captured)
 
