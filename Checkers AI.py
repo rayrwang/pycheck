@@ -5,8 +5,6 @@
 
 import graphics as gr
 import random
-import copy
-from collections import deque
 
 # The game board
 win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
@@ -15,19 +13,19 @@ win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
 def initialize_board():
     # Draw the rows of the game board
     rows = []
-    for i in range(50, 500, 50):
-        new_row = gr.Line(gr.Point(50, i), gr.Point(450, i))
+    for row_coordinates in range(50, 500, 50):
+        new_row = gr.Line(gr.Point(50, row_coordinates), gr.Point(450, row_coordinates))
         rows.append(new_row)
-    for i in rows:
-        i.draw(win)
+    for row in rows:
+        row.draw(win)
 
     # Draw the columns
     columns = []
-    for i in range(50, 500, 50):
-        new_columns = gr.Line(gr.Point(i, 50), gr.Point(i, 450))
+    for column_coordinates in range(50, 500, 50):
+        new_columns = gr.Line(gr.Point(column_coordinates, 50), gr.Point(column_coordinates, 450))
         columns.append(new_columns)
-    for i in columns:
-        i.draw(win)
+    for column in columns:
+        column.draw(win)
 
     del rows, columns
 
@@ -39,88 +37,84 @@ def initialize_board():
     # Connection type ranges from 0 to 3: top right, bottom right, bottom left, top left: from perspective of self
     connections_dict = {}
     # Give an index for each square
-    for i in range(1, 9):
-        for j in range(1, 5):
-            connections_dict[(i, j)] = {}
+    for row in range(1, 9):
+        for position_in_row in range(1, 5):
+            connections_dict[(row, position_in_row)] = {}
 
     # There are 8 types of squares: Those on each of the 4 edges,
     # upper right and lower left corners, and the middle ones on even and odd rows
 
-    for i in connections_dict:
-        row = i[0]
-        pos = i[1]
+    for square in connections_dict:
+        row = square[0]
+        pos = square[1]  # Position in row
         # Upper edge squares (excluding top right)
         if row == 1 and pos in (1, 2, 3):
-            connections_dict[i] = {0: None,
-                                   1: (row + 1, pos + 1),
-                                   2: (row + 1, pos),
-                                   3: None}
+            connections_dict[square] = {0: None,
+                                        1: (row + 1, pos + 1),
+                                        2: (row + 1, pos),
+                                        3: None}
         # Top right square
         if row == 1 and pos == 4:
-            connections_dict[i] = {0: None,
-                                   1: None,
-                                   2: (row + 1, pos),
-                                   3: None}
+            connections_dict[square] = {0: None,
+                                        1: None,
+                                        2: (row + 1, pos),
+                                        3: None}
         # Left edge excluding bottom left
         if row in (2, 4, 6) and pos == 1:
-            connections_dict[i] = {0: (row - 1, pos),
-                                   1: (row + 1, pos),
-                                   2: None,
-                                   3: None}
+            connections_dict[square] = {0: (row - 1, pos),
+                                        1: (row + 1, pos),
+                                        2: None,
+                                        3: None}
         # Center squares on even rows
         if row in (2, 4, 6) and pos in (2, 3, 4):
-            connections_dict[i] = {0: (row - 1, pos),
-                                   1: (row + 1, pos),
-                                   2: (row + 1, pos - 1),
-                                   3: (row - 1, pos - 1)}
+            connections_dict[square] = {0: (row - 1, pos),
+                                        1: (row + 1, pos),
+                                        2: (row + 1, pos - 1),
+                                        3: (row - 1, pos - 1)}
         # Center squares on odd rows
         if row in (3, 5, 7) and pos in (1, 2, 3):
-            connections_dict[i] = {0: (row - 1, pos + 1),
-                                   1: (row + 1, pos + 1),
-                                   2: (row + 1, pos),
-                                   3: (row - 1, pos)}
+            connections_dict[square] = {0: (row - 1, pos + 1),
+                                        1: (row + 1, pos + 1),
+                                        2: (row + 1, pos),
+                                        3: (row - 1, pos)}
         # Right edge
         if row in (3, 5, 7) and pos == 4:
-            connections_dict[i] = {0: None,
-                                   1: None,
-                                   2: (row + 1, pos),
-                                   3: (row - 1, pos)}
+            connections_dict[square] = {0: None,
+                                        1: None,
+                                        2: (row + 1, pos),
+                                        3: (row - 1, pos)}
         # Bottom left square
         if row == 8 and pos == 1:
-            connections_dict[i] = {0: (row - 1, pos),
-                                   1: None,
-                                   2: None,
-                                   3: None}
+            connections_dict[square] = {0: (row - 1, pos),
+                                        1: None,
+                                        2: None,
+                                        3: None}
         # Bottom row
         if row == 8 and pos in (2, 3, 4):
-            connections_dict[i] = {0: (row - 1, pos),
-                                   1: None,
-                                   2: None,
-                                   3: (row - 1, pos - 1)}
+            connections_dict[square] = {0: (row - 1, pos),
+                                        1: None,
+                                        2: None,
+                                        3: (row - 1, pos - 1)}
 
     # Initialize and draw the starting pieces
-    for i in range(1, 4):
-        for j in range(1, 5):
-            piece = Piece(False, i, j)
+    for piece_row in range(1, 4):
+        for piece_pos in range(1, 5):
+            piece = Piece(False, piece_row, piece_pos)
             pieces.append(piece)
-    for i in range(4, 6):
-        for j in range(1, 5):
+    for piece_row in range(4, 6):
+        for piece_pos in range(1, 5):
             pieces.append(None)
-    for i in range(6, 9):
-        for j in range(1, 5):
-            piece = Piece(True, i, j)
+    for piece_row in range(6, 9):
+        for piece_pos in range(1, 5):
+            piece = Piece(True, piece_row, piece_pos)
             pieces.append(piece)
 
     # Initialize the squares, the squares are drawn in Square.__init__ since the square background never changes
-    for i in range(1, 9):
-        for j in range(1, 5):
-            square = Square(i, j, connections_dict[(i, j)], pieces[i * 4 - 5 + j])
-            squares[i - 1].append(square)
-
-    for i in squares:
-        for j in i:
-            if j.piece is not None:
-                j.piece.draw_piece()
+    for square_row in range(1, 9):
+        for square_pos in range(1, 5):
+            square = Square(square_row, square_pos,
+                            connections_dict[(square_row, square_pos)], pieces[square_row * 4 - 5 + square_pos])
+            squares[square_row - 1].append(square)
 
 
 class Piece:
@@ -281,8 +275,7 @@ def search(start, squares_list):
     # Stores the possible moves as they're discovered: [{possible_move_1 <Square>: captured pieces <Square>}, ...]
     moves = {}
 
-    # Make sure that if the piece isn't a king, that it doesn't jump backwards in the middle of
-    # a series of jumps
+    # Make sure that if the piece isn't a king, that it doesn't jump backwards
     # Only need to check this extra thing if the piece isn't a king
     if start.piece.king is False:
         # If the piece is red
@@ -298,9 +291,9 @@ def search(start, squares_list):
 
     # Search for all possible moves
     # Loop through all the possible connections of the highlighted square ("start")
-    for i in start.connections:
-        if i in allowed_jumps:
-            connection = start.connections[i]
+    for connection_type in start.connections:
+        if connection_type in allowed_jumps:
+            connection = start.connections[connection_type]
             if connection is not None:
                 connection_square = squares_list[connection[0] - 1][connection[1] - 1]
                 # If there is no piece on the connected square, it is a possible move
@@ -309,7 +302,7 @@ def search(start, squares_list):
                 # if there is a piece, check if it's of the opposite color
                 elif connection_square.piece.color is not start.piece.color:
                     # Reuse the previous connection direction so it only tries to capture in a straight line
-                    other_side = connection_square.connections[i]
+                    other_side = connection_square.connections[connection_type]
                     # If there is a square on the other side (not reached edge of board)
                     if other_side is not None:
                         other_side_square = squares_list[other_side[0] - 1][other_side[1] - 1]
@@ -324,18 +317,19 @@ def search(start, squares_list):
 
                             def find_all_jumps(start_from, previous_captured):
                                 end_reached_overall = True
-                                for i in start_from.connections:
-                                    if i in allowed_jumps:
+                                for connection_type in start_from.connections:
+                                    if connection_type in allowed_jumps:
                                         end_reached = False
                                         all_captured = previous_captured.copy()
-                                        new_connection = start_from.connections[i]
+                                        new_connection = start_from.connections[connection_type]
                                         if new_connection is not None:
                                             new_connection_square = squares_list[new_connection[0] - 1] \
                                                 [new_connection[1] - 1]
                                             if new_connection_square not in visited:
                                                 if new_connection_square.piece is not None:
                                                     if new_connection_square.piece.color is not start.piece.color:
-                                                        new_other_side = new_connection_square.connections[i]
+                                                        new_other_side = new_connection_square.connections[
+                                                            connection_type]
                                                         if new_other_side is not None:
                                                             new_other_side_square = \
                                                                 squares_list[new_other_side[0] - 1] \
@@ -368,44 +362,30 @@ def search(start, squares_list):
 
                             find_all_jumps(other_side_square, [connection_square])
 
-    # Make sure the possible moves are limited based on whether the piece is a king, and which color the piece is
-    if start.piece.king is False:
-        # If the piece is red
-        if start.piece.color is False:
-            for i in moves.copy():
-                if i.row < start.row:
-                    moves.pop(i)
-
-        # If the piece is black
-        if start.piece.color is True:
-            for i in moves.copy():
-                if i.row > start.row:
-                    moves.pop(i)
-
     # Implement the force jump rule for each piece (also need implementation for all pieces, to see if any of them
     # have an opportunity to jump), this is done elsewhere
     jump_available = False
-    for i in moves.values():
-        if i != [None]:
+    for any_captured in moves.values():
+        if any_captured != [None]:
             jump_available = True
             break
     if jump_available:
-        for i in moves.copy():
-            if moves[i] == [None]:
-                moves.pop(i)
+        for move in moves.copy():
+            if moves[move] == [None]:
+                moves.pop(move)
 
     # search() outputs dictionary {possible_move_1 <Square>: [captured pieces <Square>, ...], ...}
     return moves
 
 
 # Move a piece from the old square to the new square
-def move(old_square, new_square, captured):
+def move_piece(old_square, new_square, captured):
     if captured is not None:
-        for i in captured:
-            if i is not None:
-                if i.piece is not None:
-                    i.piece.undraw_piece()
-                    i.piece = None
+        for captured_square in captured:
+            if captured_square is not None:
+                if captured_square.piece is not None:
+                    captured_square.piece.undraw_piece()
+                    captured_square.piece = None
 
     new_square.piece = old_square.piece
     new_square.piece.row = new_square.row
@@ -455,78 +435,80 @@ def computer_move(have_to_move):
                         if search(square, squares) != {}:
                             moves.append([square, search(square, squares)])
 
-        # Check for possible captures that are 1 move away (first step in intelligence)
-        to_delete = []  # Delete them because they allow a capture by the opponent
-        for i, whole_move in enumerate(moves):
-            start_square = whole_move[0]
-            for j, end_square in enumerate(whole_move[1]):
-                # Generate the virtual objects (objects that are manipulated to see what happens)
-                virtual_squares = [[[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []],
-                                   [[], [], [], []]]
-                for virt_i, row in enumerate(squares):
-                    for virt_j, square in enumerate(row):
-                        if square.piece is not None:
-                            virtual_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
-                                                  square.piece.king, square.piece.highlight)
-                            virtual_squares[virt_i][virt_j] = Square(square.row, square.pos, square.connections,
-                                                                     virtual_piece, square.highlight)
-                        else:
-                            virtual_squares[virt_i][virt_j] = Square(square.row, square.pos, square.connections,
-                                                                     None, square.highlight)
-                virtual_moves = []
-                for virtual_row in virtual_squares:
-                    for virtual_square in virtual_row:
-                        if virtual_square.piece is not None:
-                            if virtual_square.piece.color is False:
-                                if search(virtual_square, virtual_squares) != {}:
-                                    virtual_moves.append([virtual_square, search(virtual_square, virtual_squares)])
+        
 
-                virtual_start = virtual_moves[i][0]
-                virtual_end = list(virtual_moves[i][1].keys())[j]
-                virtual_captured = list(virtual_moves[i][1].values())[j]
-                move(virtual_start, virtual_end, virtual_captured)
-                # Figure out if the move is good or not (does it let opponent capture a piece?)
-                for virtual_row in virtual_squares:
-                    for virtual_square in virtual_row:
-                        if virtual_square.piece is not None:
-                            if virtual_square.piece.color is True:
-                                opponent_moves = search(virtual_square, virtual_squares)
-                                for opponent_move in opponent_moves:
-                                    if opponent_moves[opponent_move] != [None]:
-                                        to_delete.append((start_square, end_square))
+        # # Check for possible captures that are 1 move away (first step in intelligence)
+        # to_delete = []  # Delete them because they allow a capture by the opponent
+        # for i, whole_move in enumerate(moves):
+        #     start_square = whole_move[0]
+        #     for j, end_square in enumerate(whole_move[1]):
+        #         # Generate the virtual objects (objects that are manipulated to see what happens)
+        #         virtual_squares = [[[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []],
+        #                            [[], [], [], []]]
+        #         for virtual_i, row in enumerate(squares):
+        #             for virtual_j, square in enumerate(row):
+        #                 if square.piece is not None:
+        #                     virtual_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
+        #                                           square.piece.king, square.piece.highlight)
+        #                     virtual_squares[virtual_i][virtual_j] = Square(square.row, square.pos, square.connections,
+        #                                                                    virtual_piece, square.highlight)
+        #                 else:
+        #                     virtual_squares[virtual_i][virtual_j] = Square(square.row, square.pos, square.connections,
+        #                                                                    None, square.highlight)
+        #         virtual_moves = []
+        #         for virtual_row in virtual_squares:
+        #             for virtual_square in virtual_row:
+        #                 if virtual_square.piece is not None:
+        #                     if virtual_square.piece.color is False:
+        #                         if search(virtual_square, virtual_squares) != {}:
+        #                             virtual_moves.append([virtual_square, search(virtual_square, virtual_squares)])
+        #
+        #         virtual_start = virtual_moves[i][0]
+        #         virtual_end = list(virtual_moves[i][1].keys())[j]
+        #         virtual_captured = list(virtual_moves[i][1].values())[j]
+        #         move_piece(virtual_start, virtual_end, virtual_captured)
+        #         # Figure out if the move is good or not (does it let opponent capture a piece?)
+        #         for virtual_row in virtual_squares:
+        #             for virtual_square in virtual_row:
+        #                 if virtual_square.piece is not None:
+        #                     if virtual_square.piece.color is True:
+        #                         opponent_moves = search(virtual_square, virtual_squares)
+        #                         for opponent_move in opponent_moves:
+        #                             if opponent_moves[opponent_move] != [None]:
+        #                                 to_delete.append((start_square, end_square))
+        #
+        # num_possible_moves = 0
+        # for whole_move in moves:
+        #     num_possible_moves += len(whole_move[1])
+        #
+        # # If there are any moves possible that don't result in a capture
+        # if len(to_delete) < num_possible_moves:
+        #     for bad_start, bad_end in to_delete:
+        #         for whole_move in moves:
+        #             if whole_move[0].row == bad_start.row and whole_move[0].pos == bad_start.pos:
+        #                 for i, end_square in enumerate(whole_move[1].copy()):
+        #                     if end_square.row == bad_end.row and end_square.pos == bad_end.pos:
+        #                         whole_move[1].pop(end_square)
+        #
+        # # Pick random move of out ones that survived search
+        # piece_has_moves = False
+        # while piece_has_moves is False:
+        #     move_chosen = random.randrange(0, len(moves))
+        #     if moves[move_chosen][1] != {}:
+        #         piece_has_moves = True
+        # start_square = moves[move_chosen][0]
+        # possible_end_and_captured = moves[move_chosen][1]
+        # possible_end_squares = list(possible_end_and_captured.keys())
+        # end_square = possible_end_squares[random.randrange(0, len(possible_end_squares))]
+        # captured = possible_end_and_captured[end_square]
 
-        num_possible_moves = 0
-        for whole_move in moves:
-            num_possible_moves += len(whole_move[1])
-
-        # If there are any moves possible that don't result in a capture
-        if len(to_delete) < num_possible_moves:
-            for bad_start, bad_end in to_delete:
-                for whole_move in moves:
-                    if whole_move[0].row == bad_start.row and whole_move[0].pos == bad_start.pos:
-                        for i, end_square in enumerate(whole_move[1].copy()):
-                            if end_square.row == bad_end.row and end_square.pos == bad_end.pos:
-                                whole_move[1].pop(end_square)
-
-        # Pick random move of out ones that survived search
-        piece_has_moves = False
-        while piece_has_moves is False:
-            move_chosen = random.randrange(0, len(moves))
-            if moves[move_chosen][1] != {}:
-                piece_has_moves = True
-        start_square = moves[move_chosen][0]
-        possible_end_and_captured = moves[move_chosen][1]
-        possible_end_squares = list(possible_end_and_captured.keys())
-        end_square = possible_end_squares[random.randrange(0, len(possible_end_squares))]
-        captured = possible_end_and_captured[end_square]
-
-    move(start_square, end_square, captured)
+    move_piece(start_square, end_square, captured)
 
     # Check to make the piece king if necessary
     # If piece is red
@@ -557,46 +539,45 @@ player_won, computer_won = False, False
 
 # Black moves first
 turn = True
-
+# TODO Make color selection functionality
 # Main game loop
 while True:
     # Erase old highlights and displayed connections (from last loop)
-    for i in squares:
-        for j in i:
-            if j is not None:
-                j.highlight = False
-                if j.piece is not None:
-                    j.piece.highlight = False
+    for row in squares:
+        for square in row:
+            if square is not None:
+                square.highlight = False
+                if square.piece is not None:
+                    square.piece.highlight = False
 
     # Update the drawing of everything in between mouse clicks
-    for i in squares:
-        for j in i:
-            j.draw_square()
-            if j.piece is not None:
-                j.piece.draw_piece()
+    for row in squares:
+        for square in row:
+            square.draw_square()
+            if square.piece is not None:
+                square.piece.draw_piece()
 
     # See if any jumps are available (for force jump rule)
     squares_with_jump = []
-    for i in squares:
-        for j in i:
-            if j.piece is not None:
+    for row in squares:
+        for square in row:
+            if square.piece is not None:
                 # Only need to check for available jumps for the color who's turn it is
-                if j.piece.color == turn:
-                    check_possible_moves = search(j, squares)
-                    for i in check_possible_moves.values():
-                        if i != [None]:
-                            squares_with_jump.append(j)
+                if square.piece.color == turn:
+                    for captured_list in search(square, squares).values():
+                        if captured_list != [None]:  # If there are possible captures for the piece on this square
+                            squares_with_jump.append(square)
                             break
 
     # If it's the player's turn
     if turn is True:
         # Check if the player is able to move
         able = False
-        for i in squares:
-            for j in i:
-                if j.piece is not None:
-                    if j.piece.color is True:
-                        if search(j, squares) != {}:
+        for row in squares:
+            for square in row:
+                if square.piece is not None:
+                    if square.piece.color is True:
+                        if search(square, squares) != {}:
                             able = True
                             break
 
@@ -632,15 +613,15 @@ while True:
 
                         # Highlight all the possible moves
                         possible_moves = search(click_square_object, squares)
-                        for i in possible_moves:
-                            i.highlight = True
+                        for move in possible_moves:
+                            move.highlight = True
 
                         # Update the drawing of everything on between mouse clicks
-                        for i in squares:
-                            for j in i:
-                                j.draw_square()
-                                if j.piece is not None:
-                                    j.piece.draw_piece()
+                        for row in squares:
+                            for square in row:
+                                square.draw_square()
+                                if square.piece is not None:
+                                    square.piece.draw_piece()
 
                         # Detect whether / where to move the selected piece
                         second_click = win.getMouse()
@@ -649,8 +630,8 @@ while True:
                             second_click_square_object = \
                                 squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
                             if second_click_square_object in possible_moves:
-                                move(click_square_object, second_click_square_object,
-                                     possible_moves[second_click_square_object])
+                                move_piece(click_square_object, second_click_square_object,
+                                           possible_moves[second_click_square_object])
 
                                 # Flip who's turn it is
                                 turn = not turn
@@ -668,11 +649,11 @@ while True:
     else:
         # Check if the computer is able to move
         able = False
-        for i in squares:
-            for j in i:
-                if j.piece is not None:
-                    if j.piece.color is False:
-                        if search(j, squares) != {}:
+        for row in squares:
+            for square in row:
+                if square.piece is not None:
+                    if square.piece.color is False:
+                        if search(square, squares) != {}:
                             able = True
                             break
 
