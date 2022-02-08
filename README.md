@@ -4,6 +4,7 @@
 This program implements a checkers game and a computer opponent.
 
 Required modules: graphics.py
+
 More information here:
 
 https://pypi.org/project/graphics.py/
