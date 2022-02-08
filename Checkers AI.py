@@ -5,6 +5,7 @@
 
 import graphics as gr
 import random
+from collections import deque
 
 # The game board
 win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
@@ -460,7 +461,7 @@ def computer_move(have_to_move):
         # These are all the possible moves that the computer must look at:
         # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
         moves = find_moves(squares)
-        moves_scored = []  # Holds a score for how good a move is
+        moves_scored = []  # Holds a score for how good a move is, this is the final product of the following code
         # Initialize moves_scored
         # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
         for whole_move in moves:
@@ -470,9 +471,14 @@ def computer_move(have_to_move):
                 captured = end_and_captured[end]
                 moves_scored.append([[start, end, captured], 0])
 
-        # TODO The magic will happen here
+        # This is the basic object that the computer uses to look into possible futures
+        class Position:
+            def __init__(self, board, depth):
+                self.board = board
+                self.depth = depth
+                self.moves = find_moves(board)
 
-        # Pick out the move(s) with the highest score in dict moves_scored, and pick random move from the move(s)
+        # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
         best_moves = []
         for i, move in enumerate(moves_scored):
