@@ -412,9 +412,26 @@ def search(start, squares_list):
 
 
 # Move a piece from the old square to the new square
-def move_piece(old_square, new_square, captured):
-    if captured is not None:
-        for captured_square in captured:
+def move_piece(old_square, new_square, captured, squares_list):
+    # Figure out which squares in squares_list are representative of the squares to be moved
+    # This means find squares which aren't necessarily the same object, but have the same attributes (row and position)
+    captured_copy = []
+    for row in squares_list:
+        for square in row:
+            if square.row == old_square.row and square.pos == old_square.pos:
+                old_square = square
+                continue
+            if square.row == new_square.row and square.pos == new_square.pos:
+                new_square = square
+                continue
+            if captured != [None]:
+                for captured_square in captured:
+                    if square.row == captured_square.row and square.pos == captured_square.pos:
+                        captured_copy.append(captured_square)
+                        continue
+
+    if captured_copy is not None:
+        for captured_square in captured_copy:
             if captured_square is not None:
                 if captured_square.piece is not None:
                     captured_square.piece.undraw_piece()
@@ -461,8 +478,8 @@ def computer_move(have_to_move):
         # These are all the possible moves that the computer must look at:
         # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
         moves = find_moves(squares)
-        moves_scored = []  # Holds a score for how good a move is, this is the final product of the following code
-        # Initialize moves_scored
+        moves_scored = []  # Holds a score for how good a move is
+        # Initialize moves_scored (basically sort of flatten moves list)
         # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
         for whole_move in moves:
             start = whole_move[0]
@@ -471,12 +488,69 @@ def computer_move(have_to_move):
                 captured = end_and_captured[end]
                 moves_scored.append([[start, end, captured], 0])
 
+        # TODO Lots left to do to make it intelligent
+
         # This is the basic object that the computer uses to look into possible futures
         class Position:
-            def __init__(self, board, depth):
-                self.board = board
+            def __init__(self, move_index, virtual_squares, turn, depth):
+                self.move_index = move_index  # Which original move's tree is this node part of?
+                self.board = virtual_squares
                 self.depth = depth
-                self.moves = find_moves(board)
+                self.turn = turn
+                self.moves = find_moves(virtual_squares, turn)
+
+        # Search into the future to see how good a move is, communicate by updating moves_scored
+        to_search = deque()
+        # Start by populating the search tree with the moves that the computer can make right now
+        for move_index, starting_move in enumerate(moves_scored):
+            new_virtual_squares = duplicate(squares)
+            move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
+            to_search.append(Position(move_index, new_virtual_squares, True, 1))
+
+        while True:
+            # Start searching through the deque
+            current = to_search.popleft()
+
+            # Analyze the current board situation and adjust moves_scored accordingly
+            # Looking for how many pieces each side has, and has one side lost yet
+
+            red_pieces_count = 0
+            black_pieces_count = 0
+            for row in current.board:
+                for square in row:
+                    if square.piece is not None:
+                        if square.piece.color is False:
+                            if square.piece.king is True:
+                                red_pieces_count += 4
+                            else:
+                                red_pieces_count += 1
+                        if square.piece.color is True:
+                            if square.piece.king is True:
+                                black_pieces_count += 4
+                            else:
+                                black_pieces_count += 1
+
+            moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
+
+            if current.depth >= 2:
+                break
+
+            # next_moves = [[start_square, end_square, [captured, ...]], ...]
+            next_moves = []
+            # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
+            # moves_scored, but without score index
+            for whole_move in current.moves:
+                start = whole_move[0]
+                end_and_captured = whole_move[1]
+                for end in end_and_captured:
+                    captured = end_and_captured[end]
+                    next_moves.append([start, end, captured])
+
+                for move in next_moves:
+                    new_virtual_squares = duplicate(current.board)
+                    move_piece(move[0], move[1], move[2], new_virtual_squares)
+                    to_search.append(Position(current.move_index, new_virtual_squares,
+                                              not current.turn, current.depth + 1))
 
         # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
@@ -498,7 +572,7 @@ def computer_move(have_to_move):
         end_square = move_chosen[0][1]
         captured = move_chosen[0][2]
 
-    move_piece(start_square, end_square, captured)
+    move_piece(start_square, end_square, captured, squares)
 
     # Check to make the piece king if necessary
     # If piece is red
@@ -546,6 +620,7 @@ while True:
             square.draw_square()
             if square.piece is not None:
                 square.piece.draw_piece()
+    win.update()
 
     # See if any jumps are available (for force jump rule)
     squares_with_jump = []
@@ -606,12 +681,13 @@ while True:
                         for move in possible_moves:
                             move.highlight = True
 
-                        # Update the drawing of everything on between mouse clicks
+                        # Update the drawing of everything in between mouse clicks
                         for row in squares:
                             for square in row:
                                 square.draw_square()
                                 if square.piece is not None:
                                     square.piece.draw_piece()
+                        win.update()
 
                         # Detect whether / where to move the selected piece
                         second_click = win.getMouse()
@@ -621,7 +697,7 @@ while True:
                                 squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
                             if second_click_square_object in possible_moves:
                                 move_piece(click_square_object, second_click_square_object,
-                                           possible_moves[second_click_square_object])
+                                           possible_moves[second_click_square_object], squares)
 
                                 # Flip who's turn it is
                                 turn = not turn
