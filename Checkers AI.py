@@ -261,7 +261,7 @@ def duplicate(squares_list):
 
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
-def find_moves(squares_list, side=False):
+def find_moves(squares_list, side=False):  # TODO Make the output formatting better?
     moves = []
     for row in squares_list:
         for square in row:
@@ -511,6 +511,9 @@ def computer_move(have_to_move):
             # Start searching through the deque
             current = to_search.popleft()
 
+            if len(to_search) == 0:
+                break
+
             # Analyze the current board situation and adjust moves_scored accordingly
             # Looking for how many pieces each side has, and has one side lost yet
 
@@ -532,20 +535,20 @@ def computer_move(have_to_move):
 
             moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
 
-            if current.depth >= 2:
-                break
+            # Only generate more moves if certain depth hasn't been reached yet:
+            if current.depth <= 1:
+                # next_moves = [[start_square, end_square, [captured, ...]], ...]
+                next_moves = []
+                # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
+                # moves_scored, but without score index (so it's easier to work with)
+                for whole_move in current.moves:
+                    start = whole_move[0]
+                    end_and_captured = whole_move[1]
+                    for end in end_and_captured:
+                        captured = end_and_captured[end]
+                        next_moves.append([start, end, captured])
 
-            # next_moves = [[start_square, end_square, [captured, ...]], ...]
-            next_moves = []
-            # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
-            # moves_scored, but without score index
-            for whole_move in current.moves:
-                start = whole_move[0]
-                end_and_captured = whole_move[1]
-                for end in end_and_captured:
-                    captured = end_and_captured[end]
-                    next_moves.append([start, end, captured])
-
+                # Generate the child positions:
                 for move in next_moves:
                     new_virtual_squares = duplicate(current.board)
                     move_piece(move[0], move[1], move[2], new_virtual_squares)
