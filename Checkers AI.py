@@ -510,6 +510,9 @@ def computer_move(have_to_move):
             to_search.append(Position(move_index, new_virtual_squares, True, 1))
 
         while True:
+            # FIXME Fix high memory usage, need to deallocate objects somehow?
+            del current  # Doesn't seem to work that well
+
             # Start searching through the deque
             current = to_search.popleft()
 
@@ -556,9 +559,6 @@ def computer_move(have_to_move):
                     move_piece(move[0], move[1], move[2], new_virtual_squares)
                     to_search.append(Position(current.move_index, new_virtual_squares,
                                               not current.turn, current.depth + 1))
-
-            # FIXME Fix high memory usage, need to deallocate objects somehow?
-            del current  # Doesn't seem to work that well
 
         # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
