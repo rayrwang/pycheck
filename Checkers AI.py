@@ -9,6 +9,7 @@ from collections import deque
 
 # The game board
 win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
+# TODO Add debug display to see what computer is thinking
 
 
 def initialize_board():
@@ -503,18 +504,16 @@ def computer_move(have_to_move):
 
         # Search into the future to see how good a move is, communicate by updating moves_scored
         to_search = deque()
-        # Start by populating the search tree with the moves that the computer can make right now
+        # Start by populating the search deque with the moves that the computer can make right now
         for move_index, starting_move in enumerate(moves_scored):
             new_virtual_squares = duplicate(squares)
             move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
             to_search.append(Position(move_index, new_virtual_squares, True, 1))
 
         while True:
-            # FIXME Fix high memory usage, need to deallocate objects somehow?
-            del current  # Doesn't seem to work that well
-
             # Start searching through the deque
             current = to_search.popleft()
+            print(len(to_search))
 
             if len(to_search) == 0:
                 break
@@ -559,6 +558,9 @@ def computer_move(have_to_move):
                     move_piece(move[0], move[1], move[2], new_virtual_squares)
                     to_search.append(Position(current.move_index, new_virtual_squares,
                                               not current.turn, current.depth + 1))
+
+            # FIXME Fix high memory usage, need to deallocate objects somehow?
+            del current  # Doesn't seem to work that well
 
         # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
