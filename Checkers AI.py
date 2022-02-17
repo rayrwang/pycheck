@@ -9,8 +9,8 @@ from collections import deque
 
 # The game board
 win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
-# TODO Add debug display to see what computer is thinking
 
+# TODO Add debug display to see what computer is thinking
 
 def initialize_board():
     # Draw the rows of the game board
@@ -263,6 +263,7 @@ def duplicate(squares_list):
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
 def find_moves(squares_list, side=False):  # TODO Make the output formatting better?
+    # FIXME find_moves not accounting for jump move rule?
     moves = []
     for row in squares_list:
         for square in row:
@@ -445,7 +446,7 @@ def move_piece(old_square, new_square, captured, squares_list):
     old_square.piece = None
 
 
-# Computer makes a move
+# Computer makes a move (with intelligence)
 def computer_move(have_to_move):
     # If there are force jumps, pick the one that captures the most pieces
     if have_to_move:
@@ -489,31 +490,29 @@ def computer_move(have_to_move):
                 captured = end_and_captured[end]
                 moves_scored.append([[start, end, captured], 0])
 
-        # TODO Lots left to do to make it intelligent
+        # TODO Minimax algorithm?
         # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
         # FIXME ^ Maybe since there are less pieces later on, a flaw that always existed shows itself more?
 
-        # This is the basic object that the computer uses to look into possible futures
-        class Position:
-            def __init__(self, move_index, virtual_squares, turn, depth):
-                self.move_index = move_index  # Which original move's tree is this node part of?
-                self.board = virtual_squares
-                self.depth = depth
-                self.turn = turn
-                self.moves = find_moves(virtual_squares, turn)
-
         # Search into the future to see how good a move is, communicate by updating moves_scored
         to_search = deque()
+
+        # to_search will be populated with tuples of length 5, encoding information about each board state
+        # Info in tuples: 0: <int> The original move that this future move came from
+        #                 1: <list> The current board position
+        #                 2: <bool> Whose turn it is
+        #                 3: <int> How far deep is this node from the original move
+        #                 4: <list> The possible future moves from this position
+
         # Start by populating the search deque with the moves that the computer can make right now
         for move_index, starting_move in enumerate(moves_scored):
             new_virtual_squares = duplicate(squares)
             move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
-            to_search.append(Position(move_index, new_virtual_squares, True, 1))
+            to_search.append((move_index, new_virtual_squares, True, 1, find_moves(new_virtual_squares, True)))
 
         while True:
             # Start searching through the deque
             current = to_search.popleft()
-            print(len(to_search))
 
             if len(to_search) == 0:
                 break
@@ -523,7 +522,7 @@ def computer_move(have_to_move):
 
             red_pieces_count = 0
             black_pieces_count = 0
-            for row in current.board:
+            for row in current[1]:
                 for square in row:
                     if square.piece is not None:
                         if square.piece.color is False:
@@ -537,15 +536,15 @@ def computer_move(have_to_move):
                             else:
                                 black_pieces_count += 1
 
-            moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
+            moves_scored[current[0]][1] += (red_pieces_count - black_pieces_count)
 
             # Only generate more moves if certain depth hasn't been reached yet:
-            if current.depth <= 1:
+            if current[3] <= 1:
                 # next_moves = [[start_square, end_square, [captured, ...]], ...]
                 next_moves = []
                 # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
                 # moves_scored, but without score index (so it's easier to work with)
-                for whole_move in current.moves:
+                for whole_move in current[4]:
                     start = whole_move[0]
                     end_and_captured = whole_move[1]
                     for end in end_and_captured:
@@ -554,13 +553,18 @@ def computer_move(have_to_move):
 
                 # Generate the child positions:
                 for move in next_moves:
-                    new_virtual_squares = duplicate(current.board)
+                    new_virtual_squares = duplicate(current[1])
                     move_piece(move[0], move[1], move[2], new_virtual_squares)
-                    to_search.append(Position(current.move_index, new_virtual_squares,
-                                              not current.turn, current.depth + 1))
+                    to_search.append((current[0], new_virtual_squares, not current[2],
+                                      current[3] + 1, find_moves(new_virtual_squares, not current[2])))
 
             # FIXME Fix high memory usage, need to deallocate objects somehow?
+            for row in current[1]:
+                for square in row:
+                    del square
             del current  # Doesn't seem to work that well
+
+        del to_search
 
         # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
