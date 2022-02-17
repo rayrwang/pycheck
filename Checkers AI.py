@@ -452,156 +452,135 @@ def move_piece(old_square, new_square, captured, squares_list):
 
 # Computer makes a move (with intelligence)
 def computer_move(have_to_move):
-    # TODO Make the search algorithm work (in limited sense) even with force jumps?
-    # If there are force jumps, pick the one that captures the most pieces
-    if have_to_move:
-        # best_jumps = [[start_square, {end_square: [captured, ...]}], ...]
-        best_jumps = []
-        # Default only expect jumps with 1 captured piece
-        most_jump_length = 1
-
-        for start_square in have_to_move:
-            options = search(start_square, squares)
-            for end_square in options:
-                if len(options[end_square]) == most_jump_length:
-                    best_jumps.append([start_square, {end_square: options[end_square]}])
-                elif len(options[end_square]) > most_jump_length:
-                    most_jump_length = len(options[end_square])
-                    best_jumps.clear()
-                    best_jumps.append([start_square, {end_square: options[end_square]}])
-
-        jump_chosen = random.randrange(0, len(best_jumps))
-        start_square = best_jumps[jump_chosen][0]
-        end_and_captured = list(best_jumps[jump_chosen][1].items())
-        end_square = end_and_captured[0][0]
-        captured = end_and_captured[0][1]
-
-    # If no force jumps, use this algorithm to figure out how to move
     # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
     # of pieces that the computer could gain / lose
     # TODO Make sure the computer only stops looking forward on a move that has no captures, to account for sets of
     # captures and capture backs, otherwise the evaluation of the moves will be skewed
+
+    # These are all the possible moves that the computer must look at:
+    # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
+    if have_to_move:
+        moves = have_to_move
     else:
-        # These are all the possible moves that the computer must look at:
-        # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
         moves = find_moves(squares)
-        moves_scored = []  # Holds a score for how good a move is
-        # Initialize moves_scored (basically sort of flatten moves list)
-        # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
-        for whole_move in moves:
-            start = whole_move[0]
-            end_and_captured = whole_move[1]
-            for end in end_and_captured:
-                captured = end_and_captured[end]
-                moves_scored.append([[start, end, captured], 0])
 
-        # TODO Minimax algorithm?
-        # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
-        # FIXME ^ Maybe since there are less pieces later on, a flaw that always existed shows itself more?
+    moves_scored = []  # Holds a score for how good a move is
+    # Initialize moves_scored (basically sort of flatten moves list)
+    # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
+    for whole_move in moves:
+        start = whole_move[0]
+        end_and_captured = whole_move[1]
+        for end in end_and_captured:
+            captured = end_and_captured[end]
+            moves_scored.append([[start, end, captured], 0])
 
-        # This is the basic object that the computer uses to look into possible futures
-        class Position:
-            def __init__(self, move_index, virtual_squares, turn, depth):
-                self.move_index = move_index  # Which original move's tree is this node part of?
-                self.board = virtual_squares
-                self.depth = depth
-                self.turn = turn
-                self.moves = find_moves(virtual_squares, turn)
+    # TODO Minimax algorithm?
+    # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
+    # FIXME ^ Maybe since there are less pieces later on, a flaw that always existed shows itself more?
 
-        # Search into the future to see how good a move is, communicate by updating moves_scored
-        to_search = deque()
-        # Start by populating the search deque with the moves that the computer can make right now
-        for move_index, starting_move in enumerate(moves_scored):
-            new_virtual_squares = duplicate(squares)
-            move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
-            to_search.append(Position(move_index, new_virtual_squares, True, 1))
+    # This is the basic object that the computer uses to look into possible futures
+    class Position:
+        def __init__(self, move_index, virtual_squares, turn, depth):
+            self.move_index = move_index  # Which original move's tree is this node part of?
+            self.board = virtual_squares
+            self.depth = depth
+            self.turn = turn
+            self.moves = find_moves(virtual_squares, turn)
 
-        while True:
-            # Start searching through the deque
-            current = to_search.popleft()
+    # Search into the future to see how good a move is, communicate by updating moves_scored
+    to_search = deque()
+    # Start by populating the search deque with the moves that the computer can make right now
+    for move_index, starting_move in enumerate(moves_scored):
+        new_virtual_squares = duplicate(squares)
+        move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
+        to_search.append(Position(move_index, new_virtual_squares, True, 1))
 
-            if len(to_search) == 0:
-                break
+    while True:
+        # Start searching through the deque
+        current = to_search.popleft()
 
-            # Analyze the current board situation and adjust moves_scored accordingly
-            # Looking for how many pieces each side has, and has one side lost yet
+        if len(to_search) == 0:
+            break
 
-            red_pieces_count = 0
-            black_pieces_count = 0
-            for row in current.board:
-                for square in row:
-                    if square.piece is not None:
-                        if square.piece.color is False:
-                            if square.piece.king is True:
-                                red_pieces_count += 4
-                            else:
-                                red_pieces_count += 1
-                        if square.piece.color is True:
-                            if square.piece.king is True:
-                                black_pieces_count += 4
-                            else:
-                                black_pieces_count += 1
+        # Analyze the current board situation and adjust moves_scored accordingly
+        # Looking for how many pieces each side has, and has one side lost yet
 
-            moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
+        red_pieces_count = 0
+        black_pieces_count = 0
+        for row in current.board:
+            for square in row:
+                if square.piece is not None:
+                    if square.piece.color is False:
+                        if square.piece.king is True:
+                            red_pieces_count += 4
+                        else:
+                            red_pieces_count += 1
+                    if square.piece.color is True:
+                        if square.piece.king is True:
+                            black_pieces_count += 4
+                        else:
+                            black_pieces_count += 1
 
-            # Only generate more moves if certain depth hasn't been reached yet:
-            if current.depth <= 1:
-                # next_moves = [[start_square, end_square, [captured, ...]], ...]
-                next_moves = []
-                # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
-                # moves_scored, but without score index (so it's easier to work with)
-                for whole_move in current.moves:
-                    start = whole_move[0]
-                    end_and_captured = whole_move[1]
-                    for end in end_and_captured:
-                        captured = end_and_captured[end]
-                        next_moves.append([start, end, captured])
+        moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
 
-                # Generate the child positions:
-                for move in next_moves:
-                    new_virtual_squares = duplicate(current.board)
-                    move_piece(move[0], move[1], move[2], new_virtual_squares)
-                    to_search.append(Position(current.move_index, new_virtual_squares,
-                                              not current.turn, current.depth + 1))
+        # Only generate more moves if certain depth hasn't been reached yet:
+        if current.depth <= 1:
+            # next_moves = [[start_square, end_square, [captured, ...]], ...]
+            next_moves = []
+            # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
+            # moves_scored, but without score index (so it's easier to work with)
+            for whole_move in current.moves:
+                start = whole_move[0]
+                end_and_captured = whole_move[1]
+                for end in end_and_captured:
+                    captured = end_and_captured[end]
+                    next_moves.append([start, end, captured])
 
-            # FIXME Fix high memory usage, need to deallocate objects somehow?
-            # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
+            # Generate the child positions:
+            for move in next_moves:
+                new_virtual_squares = duplicate(current.board)
+                move_piece(move[0], move[1], move[2], new_virtual_squares)
+                to_search.append(Position(current.move_index, new_virtual_squares,
+                                          not current.turn, current.depth + 1))
 
-            # Display moves_scored
-            for move in moves_display:
-                if move is not None:
-                    move.undraw()
+        # FIXME Fix high memory usage, need to deallocate objects somehow?
+        # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
 
-            moves_display.clear()
-            line = 50
-            for move in moves_scored:
-                text = gr.Text(gr.Point(600, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                    f"{move[0][1].row} {move[0][1].pos} : {move[1]}")
-                text.setSize(10)
-                moves_display.append(text)
-                line += 15
-            for move in moves_display:
-                move.draw(win)
+    # Display moves_scored
+    for move in moves_display:
+        if move is not None:
+            move.undraw()
 
-        # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
-        highest = None
-        best_moves = []
-        for i, move in enumerate(moves_scored):
-            if highest is None:
-                highest = moves_scored[i][1]
+    moves_display.clear()
+    line = 50
+    for move in moves_scored:
+        text = gr.Text(gr.Point(600, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                            f"{move[0][1].row} {move[0][1].pos} : {move[1]}")
+        text.setSize(10)
+        moves_display.append(text)
+        line += 15
+    for move in moves_display:
+        move.draw(win)
+
+    # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
+    highest = None
+    best_moves = []
+    for i, move in enumerate(moves_scored):
+        if highest is None:
+            highest = moves_scored[i][1]
+            best_moves.append(move)
+        else:
+            if moves_scored[i][1] == highest:
                 best_moves.append(move)
-            else:
-                if moves_scored[i][1] == highest:
-                    best_moves.append(move)
-                elif moves_scored[i][1] > highest:
-                    highest = moves_scored[i][1]
-                    best_moves.clear()
-                    best_moves.append(move)
+            elif moves_scored[i][1] > highest:
+                highest = moves_scored[i][1]
+                best_moves.clear()
+                best_moves.append(move)
 
-        move_chosen = best_moves[random.randrange(0, len(best_moves))]
-        start_square = move_chosen[0][0]
-        end_square = move_chosen[0][1]
-        captured = move_chosen[0][2]
+    move_chosen = best_moves[random.randrange(0, len(best_moves))]
+    start_square = move_chosen[0][0]
+    end_square = move_chosen[0][1]
+    captured = move_chosen[0][2]
 
     move_piece(start_square, end_square, captured, squares)
 
