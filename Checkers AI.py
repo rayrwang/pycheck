@@ -10,8 +10,6 @@ from collections import deque
 # The game board
 win = gr.GraphWin("Checkers AI", 750, 500, autoflush=False)
 
-# TODO Add debug display to see what computer is thinking
-
 
 def initialize_board():
     # Draw the rows of the game board
@@ -267,7 +265,7 @@ def duplicate(squares_list):
 
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
-def find_moves(squares_list, side=False, force_jumps=None):  # TODO Make the output formatting better?
+def find_moves(squares_list, side=False, force_jumps=None):
     moves = []
     if force_jumps:
         for square in force_jumps:
@@ -282,7 +280,17 @@ def find_moves(squares_list, side=False, force_jumps=None):  # TODO Make the out
                     if square.piece.color is side:
                         if search(square, squares_list) != {}:
                             moves.append([square, search(square, squares_list)])
-    return moves
+
+    # Flatten the list of possible moves (so it's easier to work with)
+    moves_flat = []
+    for whole_move in moves:
+        start = whole_move[0]
+        end_and_captured = whole_move[1]
+        for end in end_and_captured:
+            captured = end_and_captured[end]
+            moves_flat.append([start, end, captured])
+
+    return moves_flat
 
 
 def click_get_square(point):
@@ -471,12 +479,8 @@ def computer_move(have_to_move):
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored (basically sort of flatten moves list)
     # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
-    for whole_move in moves:
-        start = whole_move[0]
-        end_and_captured = whole_move[1]
-        for end in end_and_captured:
-            captured = end_and_captured[end]
-            moves_scored.append([[start, end, captured], 0])
+    for move in moves:
+        moves_scored.append([move, 0])
 
     # TODO Minimax algorithm?
     # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
@@ -533,12 +537,8 @@ def computer_move(have_to_move):
             next_moves = []
             # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
             # moves_scored, but without score index (so it's easier to work with)
-            for whole_move in current.moves:
-                start = whole_move[0]
-                end_and_captured = whole_move[1]
-                for end in end_and_captured:
-                    captured = end_and_captured[end]
-                    next_moves.append([start, end, captured])
+            for move in current.moves:
+                next_moves.append(move)
 
             # Generate the child positions:
             for move in next_moves:
