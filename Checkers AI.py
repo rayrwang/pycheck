@@ -8,7 +8,7 @@ import random
 from collections import deque
 
 # The game board
-win = gr.GraphWin("Checkers AI", 500, 500, autoflush=False)
+win = gr.GraphWin("Checkers AI", 750, 500, autoflush=False)
 
 # TODO Add debug display to see what computer is thinking
 
@@ -31,6 +31,10 @@ def initialize_board():
         column.draw(win)
 
     del rows, columns
+
+    debug_heading = gr.Text(gr.Point(600, 25), "Debug")
+    debug_heading.setSize(16)
+    debug_heading.draw(win)
 
     # This code will generate the connections between the squares on the board
     # This can be done manually, but it's arguably more interesting to do it algorithmically
@@ -448,6 +452,7 @@ def move_piece(old_square, new_square, captured, squares_list):
 
 # Computer makes a move (with intelligence)
 def computer_move(have_to_move):
+    # TODO Make the search algorithm work (in limited sense) even with force jumps?
     # If there are force jumps, pick the one that captures the most pieces
     if have_to_move:
         # best_jumps = [[start_square, {end_square: [captured, ...]}], ...]
@@ -560,6 +565,23 @@ def computer_move(have_to_move):
                                               not current.turn, current.depth + 1))
 
             # FIXME Fix high memory usage, need to deallocate objects somehow?
+            # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
+
+            # Display moves_scored
+            for move in moves_display:
+                if move is not None:
+                    move.undraw()
+
+            moves_display.clear()
+            line = 50
+            for move in moves_scored:
+                text = gr.Text(gr.Point(600, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                    f"{move[0][1].row} {move[0][1].pos} : {move[1]}")
+                text.setSize(10)
+                moves_display.append(text)
+                line += 15
+            for move in moves_display:
+                move.draw(win)
 
         # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
         highest = None
@@ -607,6 +629,8 @@ squares = [[],
 
 pieces = []
 initialize_board()
+
+moves_display = []
 
 player_won, computer_won = False, False
 
