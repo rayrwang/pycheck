@@ -530,9 +530,11 @@ def computer_move(have_to_move):
                             black_pieces_count += 1
 
         moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
+        # TODO Make algorithm more efficient and more intelligent
+        # FIXME Algorithm is evaluating moves with captures as score 0, even if red has way more pieces, fix this
 
         # Only generate more moves if certain depth hasn't been reached yet:
-        if current.depth <= 1:
+        if current.depth <= 1:  # TODO What is the ideal number for this? Even or odd, or dynamic?
             # next_moves = [[start_square, end_square, [captured, ...]], ...]
             next_moves = []
             # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
@@ -549,6 +551,8 @@ def computer_move(have_to_move):
 
         # FIXME Fix high memory usage, need to deallocate objects somehow?
         # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
+
+        # TODO Improve intelligence (algorithm has problems)
 
     # Display moves_scored
     for move in moves_display:
