@@ -267,14 +267,21 @@ def duplicate(squares_list):
 
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
-def find_moves(squares_list, side=False):  # TODO Make the output formatting better?
+def find_moves(squares_list, side=False, force_jumps=None):  # TODO Make the output formatting better?
     moves = []
-    for row in squares_list:
-        for square in row:
+    if force_jumps:
+        for square in force_jumps:
             if square.piece is not None:
                 if square.piece.color is side:
                     if search(square, squares_list) != {}:
                         moves.append([square, search(square, squares_list)])
+    else:
+        for row in squares_list:
+            for square in row:
+                if square.piece is not None:
+                    if square.piece.color is side:
+                        if search(square, squares_list) != {}:
+                            moves.append([square, search(square, squares_list)])
     return moves
 
 
@@ -459,10 +466,7 @@ def computer_move(have_to_move):
 
     # These are all the possible moves that the computer must look at:
     # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
-    if have_to_move:
-        moves = have_to_move
-    else:
-        moves = find_moves(squares)
+    moves = find_moves(squares, force_jumps=have_to_move)
 
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored (basically sort of flatten moves list)
@@ -639,7 +643,7 @@ while True:
     for row in squares:
         for square in row:
             if square.piece is not None:
-                # Only need to check for available jumps for the color who's turn it is
+                # Only need to check for available jumps for the color whose turn it is
                 if square.piece.color == turn:
                     for captured_list in search(square, squares).values():
                         if captured_list != [None]:  # If there are possible captures for the piece on this square
@@ -741,7 +745,7 @@ while True:
 
         computer_move(squares_with_jump)
 
-        # Flip who's turn it is
+        # Flip whose turn it is
         turn = not turn
 
 if player_won:
