@@ -139,7 +139,7 @@ class Piece:
 
         if self.row % 2 == 1:  # If piece is on rows 1, 3, 5, 7
             piece_position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
-        elif self.row % 2 == 0:  # If piece is on rows 2, 4, 6, 8
+        else:  # If piece is on rows 2, 4, 6, 8
             piece_position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
         self.piece_template = (gr.Circle(piece_position, 20))
 
@@ -161,7 +161,7 @@ class Piece:
 
         if self.row % 2 == 1:  # If piece is on rows 1, 3, 5, 7
             piece_position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
-        elif self.row % 2 == 0:  # If piece is on rows 2, 4, 6, 8
+        else:  # If piece is on rows 2, 4, 6, 8
             piece_position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
         self.piece_template = (gr.Circle(piece_position, 20))
 
@@ -265,19 +265,28 @@ def duplicate(squares_list):
 
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
-def find_moves(squares_list, side=False, force_jumps=None):
+def find_moves(squares_list, side=False):
+    # Figure out if there are any force jumps, and what they are
+    force_jumps = []
+    for row in squares_list:
+        for square in row:
+            if square.piece is not None:
+                # Only need to check for available jumps for the color whose turn it is
+                if square.piece.color == side:
+                    for captured_list in search(square, squares_list).values():
+                        if captured_list != [None]:  # If there are possible captures for the piece on this square
+                            force_jumps.append(square)
+                            break
+
     moves = []
     if force_jumps:
         for square in force_jumps:
-            if square.piece is not None:
-                if square.piece.color is side:
-                    if search(square, squares_list) != {}:
-                        moves.append([square, search(square, squares_list)])
+            moves.append([square, search(square, squares_list)])
     else:
         for row in squares_list:
             for square in row:
                 if square.piece is not None:
-                    if square.piece.color is side:
+                    if square.piece.color == side:
                         if search(square, squares_list) != {}:
                             moves.append([square, search(square, squares_list)])
 
@@ -312,12 +321,12 @@ def click_get_square(point):
     if row % 2 == 1:
         if x % 2 == 1:
             return None
-        if x % 2 == 0:
+        else:
             pos = x / 2
-    if row % 2 == 0:
+    else:
         if x % 2 == 1:
             pos = (x + 1) / 2
-        if x % 2 == 0:
+        else:
             return None
 
     return row, int(pos)
@@ -341,7 +350,7 @@ def search(start, squares_list):
             # Can only jump downwards (forwards from red's perspective)
             allowed_jumps = [1, 2]
         # If the piece is black
-        if start.piece.color is True:
+        else:
             # Can only jump upwards (forwards from black's perspective)
             allowed_jumps = [0, 3]
     else:
@@ -448,7 +457,7 @@ def move_piece(old_square, new_square, captured, squares_list):
             if captured != [None]:
                 for captured_square in captured:
                     if square.row == captured_square.row and square.pos == captured_square.pos:
-                        captured_copy.append(captured_square)
+                        captured_copy.append(square)
                         continue
 
     if captured_copy is not None:
@@ -466,15 +475,13 @@ def move_piece(old_square, new_square, captured, squares_list):
 
 
 # Computer makes a move (with intelligence)
-def computer_move(have_to_move):
+def computer_move():
     # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
     # of pieces that the computer could gain / lose
-    # TODO Make sure the computer only stops looking forward on a move that has no captures, to account for sets of
-    # captures and capture backs, otherwise the evaluation of the moves will be skewed
 
     # These are all the possible moves that the computer must look at:
-    # moves = [[start_square, {end_square: [captured, ...], ...}], ...]
-    moves = find_moves(squares, force_jumps=have_to_move)
+    # moves = [[start_square, end_square, [captured, ...]], ...]
+    moves = find_moves(squares)
 
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored (basically sort of flatten moves list)
@@ -483,17 +490,20 @@ def computer_move(have_to_move):
         moves_scored.append([move, 0])
 
     # TODO Minimax algorithm?
+
     # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
     # FIXME ^ Maybe since there are less pieces later on, a flaw that always existed shows itself more?
+    # TODO Divide by number of moves checked?; think about how the algorithm iteration works, how many iterations?
 
     # This is the basic object that the computer uses to look into possible futures
     class Position:
-        def __init__(self, move_index, virtual_squares, turn, depth):
+        def __init__(self, move_index, virtual_squares, turn, depth, capturing):
             self.move_index = move_index  # Which original move's tree is this node part of?
             self.board = virtual_squares
             self.depth = depth
             self.turn = turn
             self.moves = find_moves(virtual_squares, turn)
+            self.capturing = capturing  # Was there capture last move, must not end tree branch if yes, otherwise skewed
 
     # Search into the future to see how good a move is, communicate by updating moves_scored
     to_search = deque()
@@ -501,14 +511,14 @@ def computer_move(have_to_move):
     for move_index, starting_move in enumerate(moves_scored):
         new_virtual_squares = duplicate(squares)
         move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
-        to_search.append(Position(move_index, new_virtual_squares, True, 1))
+        to_search.append(Position(move_index, new_virtual_squares, True, 1, False))
 
     while True:
-        # Start searching through the deque
-        current = to_search.popleft()
-
         if len(to_search) == 0:
             break
+
+        # Start searching through the deque
+        current = to_search.popleft()
 
         # Analyze the current board situation and adjust moves_scored accordingly
         # Looking for how many pieces each side has, and has one side lost yet
@@ -530,29 +540,19 @@ def computer_move(have_to_move):
                             black_pieces_count += 1
 
         moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
-        # TODO Make algorithm more efficient and more intelligent
-        # FIXME Algorithm is evaluating moves with captures as score 0, even if red has way more pieces, fix this
 
         # Only generate more moves if certain depth hasn't been reached yet:
-        if current.depth <= 1:  # TODO What is the ideal number for this? Even or odd, or dynamic?
-            # next_moves = [[start_square, end_square, [captured, ...]], ...]
-            next_moves = []
-            # Flatten into individual moves instead of possible moves for each piece (similar to code for generating
-            # moves_scored, but without score index (so it's easier to work with)
-            for move in current.moves:
-                next_moves.append(move)
-
+        if current.depth <= 1 or current.capturing:  # TODO What is the ideal number for this? Even or odd, or dynamic?
             # Generate the child positions:
-            for move in next_moves:
+            for move in current.moves:
                 new_virtual_squares = duplicate(current.board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
+                capturing = True if move[2] != [None] else False
                 to_search.append(Position(current.move_index, new_virtual_squares,
-                                          not current.turn, current.depth + 1))
+                                          not current.turn, current.depth + 1, capturing))
 
         # FIXME Fix high memory usage, need to deallocate objects somehow?
         # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
-
-        # TODO Improve intelligence (algorithm has problems)
 
     # Display moves_scored
     for move in moves_display:
@@ -625,6 +625,7 @@ player_won, computer_won = False, False
 turn = True
 # TODO Make color selection functionality
 # Main game loop
+count = 0
 while True:
     # Erase old highlights and displayed connections (from last loop)
     for row in squares:
@@ -747,7 +748,7 @@ while True:
             player_won = True
             break
 
-        computer_move(squares_with_jump)
+        computer_move()
 
         # Flip whose turn it is
         turn = not turn
