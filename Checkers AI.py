@@ -8,7 +8,7 @@ import random
 from collections import deque
 
 # The game board
-win = gr.GraphWin("Checkers AI", 750, 500, autoflush=False)
+win = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
 
 
 def initialize_board():
@@ -30,9 +30,14 @@ def initialize_board():
 
     del rows, columns
 
-    debug_heading = gr.Text(gr.Point(600, 25), "Debug")
-    debug_heading.setSize(16)
+    # Text that says "Debug"
+    debug_heading = gr.Text(gr.Point(575, 25), "Debug")
+    debug_heading.setSize(18)
+    debug_heading.setStyle("bold")
     debug_heading.draw(win)
+
+    divider = gr.Line(gr.Point(500, 0), gr.Point(500, 500))
+    divider.draw(win)
 
     # This code will generate the connections between the squares on the board
     # This can be done manually, but it's arguably more interesting to do it algorithmically
@@ -485,9 +490,9 @@ def computer_move():
 
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored (basically sort of flatten moves list)
-    # moves_scored = [[[start_square, end_square, [captured, ...]]. score], ...]
+    # moves_scored = [[[start_square, end_square, [captured, ...]], [score, total]], ...]
     for move in moves:
-        moves_scored.append([move, 0])
+        moves_scored.append([move, [0, 0]])
 
     # TODO Minimax algorithm?
 
@@ -539,7 +544,10 @@ def computer_move():
                         else:
                             black_pieces_count += 1
 
-        moves_scored[current.move_index][1] += (red_pieces_count - black_pieces_count)
+        # Update score
+        moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
+        # Increment total # of scores (for calculating average later)
+        moves_scored[current.move_index][1][1] += 1
 
         # Only generate more moves if certain depth hasn't been reached yet:
         if current.depth <= 1 or current.capturing:  # TODO What is the ideal number for this? Even or odd, or dynamic?
@@ -554,16 +562,21 @@ def computer_move():
         # FIXME Fix high memory usage, need to deallocate objects somehow?
         # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
 
+    # Calculate averages
+    for move in moves_scored:
+        score, total = move[1].copy()
+        move[1] = score / total
+
     # Display moves_scored
     for move in moves_display:
         if move is not None:
             move.undraw()
 
     moves_display.clear()
-    line = 50
+    line = 60
     for move in moves_scored:
-        text = gr.Text(gr.Point(600, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                            f"{move[0][1].row} {move[0][1].pos} : {move[1]}")
+        text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                            f"{move[0][1].row} {move[0][1].pos} : {move[1]:.2f}")
         text.setSize(10)
         moves_display.append(text)
         line += 15
