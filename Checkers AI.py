@@ -553,6 +553,8 @@ def computer_move():
                 capturing = True
                 break
 
+        # TODO Need to see if this way of checking for captures is better than old way (using parameter in <Position>)
+
         # Only generate more moves if certain depth hasn't been reached yet:
         if current.depth <= 1 or capturing:
             # Generate the child positions:
