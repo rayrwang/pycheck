@@ -494,21 +494,17 @@ def computer_move():
     for move in moves:
         moves_scored.append([move, [0, 0]])
 
-    # TODO Minimax algorithm?
-
-    # FIXME The computer seems to get dumber as a game progresses, diagnose and fix this (potential) problem
-    # FIXME ^ Maybe since there are less pieces later on, a flaw that always existed shows itself more?
-    # TODO Divide by number of moves checked?; think about how the algorithm iteration works, how many iterations?
+    # TODO Minimax algorithm? So computer also takes into account what the player will probably do, not just assigning
+    # TODO equal probability to each move
 
     # This is the basic object that the computer uses to look into possible futures
     class Position:
-        def __init__(self, move_index, virtual_squares, turn, depth, capturing):
+        def __init__(self, move_index, virtual_squares, turn, depth):
             self.move_index = move_index  # Which original move's tree is this node part of?
             self.board = virtual_squares
             self.depth = depth
             self.turn = turn
             self.moves = find_moves(virtual_squares, turn)
-            self.capturing = capturing  # Was there capture last move, must not end tree branch if yes, otherwise skewed
 
     # Search into the future to see how good a move is, communicate by updating moves_scored
     to_search = deque()
@@ -516,7 +512,7 @@ def computer_move():
     for move_index, starting_move in enumerate(moves_scored):
         new_virtual_squares = duplicate(squares)
         move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
-        to_search.append(Position(move_index, new_virtual_squares, True, 1, False))
+        to_search.append(Position(move_index, new_virtual_squares, True, 1))
 
     while True:
         if len(to_search) == 0:
@@ -549,15 +545,22 @@ def computer_move():
         # Increment total # of scores (for calculating average later)
         moves_scored[current.move_index][1][1] += 1
 
+        # If there are captures, these need to be looked at, even if the default search depth is exceeded
+        # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
+        capturing = False
+        for move in current.moves:
+            if move[2] != [None]:
+                capturing = True
+                break
+
         # Only generate more moves if certain depth hasn't been reached yet:
-        if current.depth <= 1 or current.capturing:  # TODO What is the ideal number for this? Even or odd, or dynamic?
+        if current.depth <= 1 or capturing:
             # Generate the child positions:
             for move in current.moves:
                 new_virtual_squares = duplicate(current.board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                capturing = True if move[2] != [None] else False
                 to_search.append(Position(current.move_index, new_virtual_squares,
-                                          not current.turn, current.depth + 1, capturing))
+                                          not current.turn, current.depth + 1))
 
         # FIXME Fix high memory usage, need to deallocate objects somehow?
         # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
