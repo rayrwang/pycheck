@@ -565,6 +565,8 @@ def computer_move():
         # FIXME Fix high memory usage, need to deallocate objects somehow?
         # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
 
+        # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
+
     # Calculate averages
     for move in moves_scored:
         score, total = move[1].copy()
