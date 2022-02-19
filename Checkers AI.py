@@ -567,6 +567,10 @@ def computer_move():
 
         # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
 
+        # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
+        # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
+        # ^ TODO Is this minimax? Idk
+
     # Calculate averages
     for move in moves_scored:
         score, total = move[1].copy()
