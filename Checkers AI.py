@@ -562,14 +562,16 @@ def computer_move():
                 to_search.append(Position(current.move_index, new_virtual_squares,
                                           not current.turn, current.depth + 1))
 
+        # TODO Primary concern right now: Identify and patch memory problem
         # FIXME Fix high memory usage, need to deallocate objects somehow?
-        # TODO ^ Is it a memory leak, or just a function of rising board complexity? Do testing
 
         # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
 
         # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
         # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
         # ^ TODO Is this minimax? Idk
+
+        # TODO Add passed piece detection?
 
     # Calculate averages
     for move in moves_scored:
