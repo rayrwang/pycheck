@@ -540,11 +540,6 @@ def computer_move():
                         else:
                             black_pieces_count += 1
 
-        # Update score
-        moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
-        # Increment total # of scores (for calculating average later)
-        moves_scored[current.move_index][1][1] += 1
-
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -553,7 +548,7 @@ def computer_move():
                 capturing = True
                 break
 
-        # Only generate more moves if certain depth hasn't been reached yet:
+        # Only generate more positions if certain depth hasn't been reached yet:
         if current.depth <= 1 or capturing:
             # Generate the child positions:
             for move in current.moves:
@@ -561,6 +556,12 @@ def computer_move():
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
                 to_search.append(Position(current.move_index, new_virtual_squares,
                                           not current.turn, current.depth + 1))
+        # If no new positions are generated, it's reached end of this search branch, and can evaluate the position now
+        else:
+            # Update score
+            moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
+            # Increment total # of scores (for calculating average later)
+            moves_scored[current.move_index][1][1] += 1
 
         # TODO Primary concern right now: Identify and patch memory problem
         # FIXME Fix high memory usage, need to deallocate objects somehow?
@@ -570,13 +571,17 @@ def computer_move():
         # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
         # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
         # ^ TODO Is this minimax? Idk
+        # FIXME The scores for the moves seem to have a lot of noise, is this a good thing?
 
         # TODO Add passed piece detection?
 
     # Calculate averages
     for move in moves_scored:
-        score, total = move[1].copy()
-        move[1] = score / total
+        score, total = move[1]
+        if total > 0:
+            move[1] = score / total
+        else:
+            move[1] = score
 
     # Display moves_scored
     for move in moves_display:
