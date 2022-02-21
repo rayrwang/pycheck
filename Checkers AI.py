@@ -28,8 +28,6 @@ def initialize_board():
     for column in columns:
         column.draw(win)
 
-    del rows, columns
-
     # Text that says "Debug"
     debug_heading = gr.Text(gr.Point(575, 25), "Debug")
     debug_heading.setSize(18)
@@ -125,53 +123,58 @@ def initialize_board():
     # Initialize and draw the starting pieces
     for piece_row in range(1, 4):
         for piece_pos in range(1, 5):
-            piece = Piece(False, piece_row, piece_pos)
+            piece = Piece(False, piece_row, piece_pos, real=True)
             pieces.append(piece)
     for piece_row in range(4, 6):
         for piece_pos in range(1, 5):
             pieces.append(None)
     for piece_row in range(6, 9):
         for piece_pos in range(1, 5):
-            piece = Piece(True, piece_row, piece_pos)
+            piece = Piece(True, piece_row, piece_pos, real=True)
             pieces.append(piece)
 
     # Initialize the squares, the squares are drawn in Square.__init__ since the square background never changes
     for square_row in range(1, 9):
         for square_pos in range(1, 5):
-            square = Square(square_row, square_pos,
-                            connections_dict[(square_row, square_pos)], pieces[square_row * 4 - 5 + square_pos])
+            square = Square(square_row, square_pos, connections_dict[(square_row, square_pos)],
+                            pieces[square_row * 4 - 5 + square_pos], real=True)
             squares[square_row - 1].append(square)
 
 
 class Piece:
-    def __init__(self, color, row, pos, king=False, highlight=False):
+    def __init__(self, color, row, pos, king=False, highlight=False, real=False):
         # "color": False = red, True = Black
         # "row": Rows are numbered 1 to 8, top to bottom
         # "pos": Square in each row, 1 to 4, left to right
-        # "highlight": Whether or not the player has highlighted the piece (about to move it)
+        # "highlight": Whether the player has highlighted the piece (about to move it)
+        # "real': Whether the piece is on the real board, or is just part of the computer's thinking process
 
         self.color = color
         self.row = row
         self.pos = pos
         self.king = king
         self.highlight = highlight
+        self.real = real
 
-        # Initialize the templates for the three parts of a piece: the piece itself, and symbols for king or highlighted
+        # Only generate the graphics objects if the piece is real, otherwise unnecessary and takes up too much memory
+        if self.real:
+            # Initialize the templates for the three parts of a piece:
+            # the piece itself, and symbols for king or highlighted
 
-        if self.row % 2 == 1:  # If piece is on rows 1, 3, 5, 7
-            piece_position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
-        else:  # If piece is on rows 2, 4, 6, 8
-            piece_position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
-        self.piece_template = (gr.Circle(piece_position, 20))
+            if self.row % 2 == 1:  # If piece is on rows 1, 3, 5, 7
+                piece_position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
+            else:  # If piece is on rows 2, 4, 6, 8
+                piece_position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
+            self.piece_template = (gr.Circle(piece_position, 20))
 
-        self.king_template = gr.Text(piece_position, "K")
-        self.king_template.setTextColor("gold")
-        self.king_template.setSize(27)
-        self.king_template.setStyle("bold")
+            self.king_template = gr.Text(piece_position, "K")
+            self.king_template.setTextColor("gold")
+            self.king_template.setSize(27)
+            self.king_template.setStyle("bold")
 
-        self.highlight_template = gr.Circle(piece_position, 22)
-        self.highlight_template.setWidth(4)
-        self.highlight_template.setOutline("gold")
+            self.highlight_template = gr.Circle(piece_position, 22)
+            self.highlight_template.setWidth(4)
+            self.highlight_template.setOutline("gold")
 
     def draw_piece(self):
         # Update the templates for the three parts of a piece: the piece itself, and symbols for king or highlighted
@@ -223,13 +226,14 @@ class Piece:
 
 
 class Square:
-    def __init__(self, row, pos, connections, piece, highlight=False):
+    def __init__(self, row, pos, connections, piece, highlight=False, real=False):
         # row and pos specify position of square (same convention as position of piece)
         # highlight shows if square is highlighted, this is used when a piece is clicked, to show possible moves
         # connections is dictionary with {connection type <int>: connected square <tuple>}
         # connected squares are tuples specified with row and pos (position in row); (row, pos): 1 to 8, 1 to 4
         # Connection type ranges from 0 to 3: top right, bottom right, bottom left, top left: from perspective of self
         # piece is which piece currently occupies this square
+        # real is whether the square is part of the board that is being played on, or is just in the computer's thoughts
 
         self.row = row
         self.pos = pos
@@ -237,20 +241,22 @@ class Square:
         self.connections = connections
         self.piece = piece
 
-        if self.row % 2 == 1:  # If square is on rows 1, 3, 5, 7
-            self.position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
-        elif self.row % 2 == 0:  # If square is on rows 2, 4, 6, 8
-            self.position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
+        # Only generate the graphics objects if the square is real, otherwise unnecessary and takes up too much memory
+        if real:
+            if self.row % 2 == 1:  # If square is on rows 1, 3, 5, 7
+                self.position = gr.Point(self.pos * 100 + 25, self.row * 50 + 25)
+            elif self.row % 2 == 0:  # If square is on rows 2, 4, 6, 8
+                self.position = gr.Point(self.pos * 100 - 25, self.row * 50 + 25)
 
-        shading = gr.Rectangle(gr.Point(self.position.getX() - 25, self.position.getY() - 25),
-                               gr.Point(self.position.getX() + 25, self.position.getY() + 25))
-        shading.setFill("grey")
-        shading.draw(win)
+            shading = gr.Rectangle(gr.Point(self.position.getX() - 25, self.position.getY() - 25),
+                                   gr.Point(self.position.getX() + 25, self.position.getY() + 25))
+            shading.setFill("grey")
+            shading.draw(win)
 
-        # Initialize the highlight template for future use
-        self.highlight_template = gr.Circle(self.position, 3)
-        self.highlight_template.setWidth(6)
-        self.highlight_template.setOutline("gold")
+            # Initialize the highlight template for future use
+            self.highlight_template = gr.Circle(self.position, 3)
+            self.highlight_template.setWidth(6)
+            self.highlight_template.setOutline("gold")
 
     def draw_square(self):
         # Need to draw highlight on square (if there is one)
@@ -485,7 +491,8 @@ def move_piece(old_square, new_square, captured, squares_list):
         for captured_square in captured_copy:
             if captured_square is not None:
                 if captured_square.piece is not None:
-                    captured_square.piece.undraw_piece()
+                    if captured_square.piece.real:
+                        captured_square.piece.undraw_piece()
                     captured_square.piece = None
 
     new_square.piece = old_square.piece
@@ -546,7 +553,7 @@ def computer_move():
                 break
 
         # Only generate more positions if certain depth hasn't been reached yet, or there are captures available:
-        if current.depth <= 1 or capturing:
+        if current.depth <= 3 or capturing:
             # Generate the child positions:
             for move in current.moves:
                 new_virtual_squares = duplicate(current.board)
@@ -558,7 +565,7 @@ def computer_move():
         else:
             # Analyze the current board situation and adjust moves_scored accordingly
             # Looking for how many pieces each side has
-            # TODO Add win / lose detection to move score calculation
+            # TODO Add win / loss detection to move score calculation
 
             red_pieces_count = 0
             black_pieces_count = 0
@@ -580,9 +587,6 @@ def computer_move():
             moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
             # Increment total # of scores (for calculating average later)
             moves_scored[current.move_index][1][1] += 1
-
-        # TODO Primary concern right now: Identify and patch memory problem
-        # FIXME Fix high memory usage, need to deallocate objects somehow?
 
         # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
 
