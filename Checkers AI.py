@@ -36,6 +36,22 @@ def initialize_board():
     debug_heading.setStyle("bold")
     debug_heading.draw(win)
 
+    debug_info = gr.Text(gr.Point(550, 445),
+                         '''
+                         row column to row column : score
+                         
+                         rows numbered 1 to 8, top to bottom
+                         
+                         columns numbered 1 to 4,
+                         left to right,
+                         for each playable (gray) square
+                         
+                         score is from red's perspective
+                         (+ = winning)
+                         ''')
+    debug_info.setSize(6)
+    debug_info.draw(win)
+
     divider = gr.Line(gr.Point(500, 0), gr.Point(500, 500))
     divider.draw(win)
 
@@ -521,25 +537,6 @@ def computer_move():
         # Start searching through the deque
         current = to_search.popleft()
 
-        # Analyze the current board situation and adjust moves_scored accordingly
-        # Looking for how many pieces each side has, and has one side lost yet
-
-        red_pieces_count = 0
-        black_pieces_count = 0
-        for row in current.board:
-            for square in row:
-                if square.piece is not None:
-                    if square.piece.color is False:
-                        if square.piece.king is True:
-                            red_pieces_count += 4
-                        else:
-                            red_pieces_count += 1
-                    if square.piece.color is True:
-                        if square.piece.king is True:
-                            black_pieces_count += 4
-                        else:
-                            black_pieces_count += 1
-
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -548,7 +545,7 @@ def computer_move():
                 capturing = True
                 break
 
-        # Only generate more positions if certain depth hasn't been reached yet:
+        # Only generate more positions if certain depth hasn't been reached yet, or there are captures available:
         if current.depth <= 1 or capturing:
             # Generate the child positions:
             for move in current.moves:
@@ -556,8 +553,29 @@ def computer_move():
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
                 to_search.append(Position(current.move_index, new_virtual_squares,
                                           not current.turn, current.depth + 1))
-        # If no new positions are generated, it's reached end of this search branch, and can evaluate the position now
+
+        # If no new positions are generated, it's reached end of this search branch, and can now evaluate the position
         else:
+            # Analyze the current board situation and adjust moves_scored accordingly
+            # Looking for how many pieces each side has
+            # TODO Add win / lose detection to move score calculation
+
+            red_pieces_count = 0
+            black_pieces_count = 0
+            for row in current.board:
+                for square in row:
+                    if square.piece is not None:
+                        if square.piece.color is False:
+                            if square.piece.king is True:
+                                red_pieces_count += 4
+                            else:
+                                red_pieces_count += 1
+                        if square.piece.color is True:
+                            if square.piece.king is True:
+                                black_pieces_count += 4
+                            else:
+                                black_pieces_count += 1
+
             # Update score
             moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
             # Increment total # of scores (for calculating average later)
