@@ -5,7 +5,6 @@
 
 import graphics as gr
 import random
-from collections import deque
 
 # The game board
 win = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
@@ -600,25 +599,19 @@ def computer_move():
     for move in moves:
         moves_scored.append([move, 0])
 
-    # This is the basic object that the computer uses to look into possible futures
-    class Position:
-        def __init__(self, virtual_squares, turn, depth):
-            self.board = virtual_squares
-            self.depth = depth
-            self.turn = turn
-            self.moves = find_moves(virtual_squares, turn)
-
     # Recursive algorithm to do minimax
-    def minimax(position):
+    def minimax(board, turn, depth):
+        moves = find_moves(board, turn)
+
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
-        for move in position.moves:
+        for move in moves:
             if move[2] != [None]:
                 capturing = True
                 break
         # Check if reached end of branch (certain depth reached and no further captures)
-        if position.depth > 4 and not capturing:
+        if depth > 4 and not capturing:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
             # TODO Add win / loss detection to move score calculation
@@ -626,7 +619,7 @@ def computer_move():
 
             red_pieces_count = 0
             black_pieces_count = 0
-            for row in position.board:
+            for row in board:
                 for square in row:
                     if square.piece is not None:
                         if square.piece.color is False:
@@ -644,12 +637,12 @@ def computer_move():
             return score
 
         # If it's red (the computer's) turn
-        if position.turn is False:
+        if turn is False:
             max_value = None
-            for move in position.moves:
-                new_virtual_squares = duplicate(position.board)
+            for move in moves:
+                new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(Position(new_virtual_squares, not position.turn, position.depth + 1))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1)
                 if max_value is None:
                     max_value = new_value
                 else:
@@ -658,12 +651,12 @@ def computer_move():
             return max_value
 
         # If it's black (the player's) turn
-        if position.turn is True:
+        if turn is True:
             min_value = None
-            for move in position.moves:
-                new_virtual_squares = duplicate(position.board)
+            for move in moves:
+                new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(Position(new_virtual_squares, not position.turn, position.depth + 1))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1)
                 if min_value is None:
                     min_value = new_value
                 else:
@@ -674,7 +667,7 @@ def computer_move():
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(Position(new_virtual_squares, True, 1))
+        move[1] = minimax(new_virtual_squares, True, 1)
 
     # # This is the old algorithm (for reference purposes):
     # # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
