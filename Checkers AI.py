@@ -6,6 +6,7 @@
 import graphics as gr
 import random
 from collections import deque
+import time
 
 # The game board
 win = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
@@ -120,6 +121,7 @@ def initialize_board():
                                         2: None,
                                         3: (row - 1, pos - 1)}
 
+    pieces = []
     # Initialize and draw the starting pieces
     for piece_row in range(1, 4):
         for piece_pos in range(1, 5):
@@ -502,6 +504,71 @@ def move_piece(old_square, new_square, captured, squares_list):
     old_square.piece = None
 
 
+def player_move():
+    # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
+    click = win.getMouse()
+    click_square_coordinates = click_get_square(click)
+
+    # Draw the new connections and highlights
+    if click_square_coordinates is not None:
+        # Read the connections associated with the square
+        click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
+
+        # If there are any squares with jumps available, they are the only allowed moves,
+        # otherwise if no jumps available, all moves allowed
+        if squares_with_jump:
+            if click_square_object in squares_with_jump:
+                allowed = True
+            else:
+                allowed = False
+        else:
+            allowed = True
+
+        if allowed:
+            # Highlight the piece on the square that was clicked (only if there is a piece present)
+            if click_square_object.piece is not None:
+                # Check if the piece clicked is of the color whose turn it is to move
+                if click_square_object.piece.color == turn:
+                    click_square_object.piece.highlight = True
+
+                    # Highlight all the possible moves
+                    possible_moves = search(click_square_object, squares)
+                    for move in possible_moves:
+                        move.highlight = True
+
+                    # Update the drawing of everything in between mouse clicks
+                    for row in squares:
+                        for square in row:
+                            square.draw_square()
+                            if square.piece is not None:
+                                square.piece.draw_piece()
+                    win.update()
+
+                    # Detect whether / where to move the selected piece
+                    second_click = win.getMouse()
+                    second_click_square_coordinates = click_get_square(second_click)
+                    if second_click_square_coordinates is not None:
+                        second_click_square_object = \
+                            squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
+                        if second_click_square_object in possible_moves:
+                            move_piece(click_square_object, second_click_square_object,
+                                       possible_moves[second_click_square_object], squares)
+
+                            # Check to make the piece king if necessary
+                            # If piece is red
+                            if second_click_square_object.piece.color is False:
+                                if second_click_square_object.row == 8:
+                                    second_click_square_object.piece.king = True
+                            # If piece is black
+                            if second_click_square_object.piece.color is True:
+                                if second_click_square_object.row == 1:
+                                    second_click_square_object.piece.king = True
+
+                            # Tell the program that the player has actually made a move
+                            # (rather than clicked on illegal square)
+                            return True
+
+
 # Computer makes a move (with intelligence)
 def computer_move():
     # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
@@ -596,6 +663,8 @@ def computer_move():
         # FIXME The scores for the moves seem to have a lot of noise, is this a good thing?
 
         # TODO Add passed piece detection?
+        # TODO Add repetition escape feature if computer is winning?
+        # TODO Add king prevention feature?
 
     # Calculate averages
     for move in moves_scored:
@@ -653,6 +722,8 @@ def computer_move():
         if end_square.row == 1:
             end_square.piece.king = True
 
+    return True
+
 
 # Initialize game
 # squares list is actively used, pieces array is for initialization purposes only
@@ -665,18 +736,15 @@ squares = [[],
            [],
            []]
 
-pieces = []
 initialize_board()
 
+# Holds the moves displayed on the debug menu
 moves_display = []
-
-player_won, computer_won = False, False
 
 # Black moves first
 turn = True
 # TODO Make color selection functionality
 # Main game loop
-count = 0
 while True:
     # Erase old highlights and displayed connections (from last loop)
     for row in squares:
@@ -722,67 +790,8 @@ while True:
             computer_won = True
             break
 
-        # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
-        click = win.getMouse()
-        click_square_coordinates = click_get_square(click)
+        moved = player_move()
 
-        # Draw the new connections and highlights
-        if click_square_coordinates is not None:
-            # Read the connections associated with the square
-            click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
-
-            # If there are any squares with jumps available, they are the only allowed moves,
-            # otherwise if no jumps available, all moves allowed
-            if squares_with_jump:
-                if click_square_object in squares_with_jump:
-                    allowed = True
-                else:
-                    allowed = False
-            else:
-                allowed = True
-
-            if allowed:
-                # Highlight the piece on the square that was clicked (only if there is a piece present)
-                if click_square_object.piece is not None:
-                    # Check if the piece clicked is of the color who's turn it is to move
-                    if click_square_object.piece.color == turn:
-                        click_square_object.piece.highlight = True
-
-                        # Highlight all the possible moves
-                        possible_moves = search(click_square_object, squares)
-                        for move in possible_moves:
-                            move.highlight = True
-
-                        # Update the drawing of everything in between mouse clicks
-                        for row in squares:
-                            for square in row:
-                                square.draw_square()
-                                if square.piece is not None:
-                                    square.piece.draw_piece()
-                        win.update()
-
-                        # Detect whether / where to move the selected piece
-                        second_click = win.getMouse()
-                        second_click_square_coordinates = click_get_square(second_click)
-                        if second_click_square_coordinates is not None:
-                            second_click_square_object = \
-                                squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
-                            if second_click_square_object in possible_moves:
-                                move_piece(click_square_object, second_click_square_object,
-                                           possible_moves[second_click_square_object], squares)
-
-                                # Flip who's turn it is
-                                turn = not turn
-
-                                # Check to make the piece king if necessary
-                                # If piece is red
-                                if second_click_square_object.piece.color is False:
-                                    if second_click_square_object.row == 8:
-                                        second_click_square_object.piece.king = True
-                                # If piece is black
-                                if second_click_square_object.piece.color is True:
-                                    if second_click_square_object.row == 1:
-                                        second_click_square_object.piece.king = True
     # If it's the computer's turn
     else:
         # Check if the computer is able to move
@@ -799,8 +808,10 @@ while True:
             player_won = True
             break
 
-        computer_move()
+        moved = computer_move()
 
+    # Only flip whose turn it is if the player actually made a move
+    if moved:
         # Flip whose turn it is
         turn = not turn
 
@@ -814,4 +825,5 @@ elif computer_won:
     computer_won_text.setTextColor("red3")
     computer_won_text.draw(win)
 
-win.getKey()
+while True:
+    time.sleep(1)
