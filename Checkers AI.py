@@ -641,7 +641,7 @@ def computer_move():
             for move in moves:
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares, not turn))
                 if max_value is None:
                     max_value = new_value
                 else:
@@ -655,7 +655,7 @@ def computer_move():
             for move in moves:
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares, not turn))
                 if min_value is None:
                     min_value = new_value
                 else:
@@ -666,7 +666,7 @@ def computer_move():
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares))
+        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares, True))
 
     # # This is the old algorithm (for reference purposes):
     # # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
