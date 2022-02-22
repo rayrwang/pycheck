@@ -598,11 +598,10 @@ def computer_move():
     # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
     for move in moves:
         moves_scored.append([move, 0])
+    del moves
 
     # Recursive algorithm to do minimax
-    def minimax(board, turn, depth):
-        moves = find_moves(board, turn)
-
+    def minimax(board, turn, depth, moves):
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -642,7 +641,7 @@ def computer_move():
             for move in moves:
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1)
+                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares))
                 if max_value is None:
                     max_value = new_value
                 else:
@@ -656,7 +655,7 @@ def computer_move():
             for move in moves:
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1)
+                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares))
                 if min_value is None:
                     min_value = new_value
                 else:
@@ -667,7 +666,7 @@ def computer_move():
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, True, 1)
+        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares))
 
     # # This is the old algorithm (for reference purposes):
     # # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
