@@ -570,108 +570,214 @@ def player_move():
 
 # Computer makes a move (with intelligence)
 def computer_move():
-    # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
-    # of pieces that the computer could gain / lose
+    # The computer uses the minimax algorithm to decide how to move next
+    # Basically, the algorithm makes a tree with all possible future moves as deep as possible, limited by
+    # processing power and memory
+    # Then it evaluates each of these end positions (not every position along the way, just the end positions)
+    # The criteria used right now is counting pieces, regular pieces worth 1 and kings worth 3
+    # Maybe other more advanced evaluation criteria later
+    # Let the score be positive if it thinks red (the computer) is winning
+    # Now, for the layer one shallower than the one with the scores, for each position node on that layer,
+    # if (for the positions on that layer) it's red (the computer's) turn, each position node will take on
+    # the maximum score of its child nodes
+    # This is because were the game to reach that position, red (the computer) would play the move that maximizes
+    # the score
+    # Conversely, if the layer is black (the player's) turn, then the parent node will take on the minimum value
+    # of its child nodes
+    # Since the player would want to minimize the advantage for the computer, which meaning maximizing the advantage
+    # for the player
+    # Repeat this process until the layer below the current position has numerical scores
+    # Then the computer makes the move with the maximum score
+    # Now let's implement this in code:
 
     # These are all the possible moves that the computer must look at:
     # moves = [[start_square, end_square, [captured, ...]], ...]
     moves = find_moves(squares)
 
     moves_scored = []  # Holds a score for how good a move is
-    # Initialize moves_scored (basically sort of flatten moves list)
-    # moves_scored = [[[start_square, end_square, [captured, ...]], [score, total]], ...]
+    # Initialize moves_scored
+    # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
     for move in moves:
-        moves_scored.append([move, [0, 0]])
-
-    # TODO Minimax algorithm? So computer also takes into account what the player will probably do, not just assigning
-    # TODO equal probability to each move
+        moves_scored.append([move, 0])
 
     # This is the basic object that the computer uses to look into possible futures
     class Position:
-        def __init__(self, move_index, virtual_squares, turn, depth):
-            self.move_index = move_index  # Which original move's tree is this node part of?
+        def __init__(self, virtual_squares, turn, depth):
             self.board = virtual_squares
             self.depth = depth
             self.turn = turn
             self.moves = find_moves(virtual_squares, turn)
 
-    # Search into the future to see how good a move is, communicate by updating moves_scored
-    to_search = deque()
-    # Start by populating the search deque with the moves that the computer can make right now
-    for move_index, starting_move in enumerate(moves_scored):
-        new_virtual_squares = duplicate(squares)
-        move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
-        to_search.append(Position(move_index, new_virtual_squares, True, 1))
-
-    while True:
-        if len(to_search) == 0:
-            break
-
-        # Start searching through the deque
-        current = to_search.popleft()
-
+    # Recursive algorithm to do minimax
+    def minimax(position):
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
-        for move in current.moves:
+        for move in position.moves:
             if move[2] != [None]:
                 capturing = True
                 break
-
-        # Only generate more positions if certain depth hasn't been reached yet, or there are captures available:
-        if current.depth <= 3 or capturing:
-            # Generate the child positions:
-            for move in current.moves:
-                new_virtual_squares = duplicate(current.board)
-                move_piece(move[0], move[1], move[2], new_virtual_squares)
-                to_search.append(Position(current.move_index, new_virtual_squares,
-                                          not current.turn, current.depth + 1))
-
-        # If no new positions are generated, it's reached end of this search branch, and can now evaluate the position
-        else:
-            # Analyze the current board situation and adjust moves_scored accordingly
+        # Check if reached end of branch (certain depth reached and no further captures)
+        if position.depth > 4 and not capturing:
+            # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
             # TODO Add win / loss detection to move score calculation
+            # TODO Or other evaluation factors
 
             red_pieces_count = 0
             black_pieces_count = 0
-            for row in current.board:
+            for row in position.board:
                 for square in row:
                     if square.piece is not None:
                         if square.piece.color is False:
                             if square.piece.king is True:
-                                red_pieces_count += 4
+                                red_pieces_count += 3
                             else:
                                 red_pieces_count += 1
                         if square.piece.color is True:
                             if square.piece.king is True:
-                                black_pieces_count += 4
+                                black_pieces_count += 3
                             else:
                                 black_pieces_count += 1
 
-            # Update score
-            moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
-            # Increment total # of scores (for calculating average later)
-            moves_scored[current.move_index][1][1] += 1
+            score = (red_pieces_count - black_pieces_count)
+            return score
 
-        # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
+        # If it's red (the computer's) turn
+        if position.turn is False:
+            max_value = None
+            for move in position.moves:
+                new_virtual_squares = duplicate(position.board)
+                move_piece(move[0], move[1], move[2], new_virtual_squares)
+                new_value = minimax(Position(new_virtual_squares, not position.turn, position.depth + 1))
+                if max_value is None:
+                    max_value = new_value
+                else:
+                    if new_value > max_value:
+                        max_value = new_value
+            return max_value
 
-        # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
-        # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
-        # ^ TODO Is this minimax? Idk
-        # FIXME The scores for the moves seem to have a lot of noise, is this a good thing?
+        # If it's black (the player's) turn
+        if position.turn is True:
+            min_value = None
+            for move in position.moves:
+                new_virtual_squares = duplicate(position.board)
+                move_piece(move[0], move[1], move[2], new_virtual_squares)
+                new_value = minimax(Position(new_virtual_squares, not position.turn, position.depth + 1))
+                if min_value is None:
+                    min_value = new_value
+                else:
+                    if new_value < min_value:
+                        min_value = new_value
+            return min_value
 
-        # TODO Add passed piece detection?
-        # TODO Add repetition escape feature if computer is winning?
-        # TODO Add king prevention feature?
-
-    # Calculate averages
     for move in moves_scored:
-        score, total = move[1]
-        if total > 0:
-            move[1] = score / total
-        else:
-            move[1] = score
+        new_virtual_squares = duplicate(squares)
+        move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
+        move[1] = minimax(Position(new_virtual_squares, True, 1))
+
+    # # This is the old algorithm (for reference purposes):
+    # # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
+    # # of pieces that the computer could gain / lose
+    #
+    # # These are all the possible moves that the computer must look at:
+    # # moves = [[start_square, end_square, [captured, ...]], ...]
+    # moves = find_moves(squares)
+    #
+    # moves_scored = []  # Holds a score for how good a move is
+    # # Initialize moves_scored
+    # # moves_scored = [[[start_square, end_square, [captured, ...]], [score, total]], ...]
+    # for move in moves:
+    #     moves_scored.append([move, [0, 0]])
+    #
+    # # TODO Minimax algorithm? So computer also takes into account what the player will probably do, not just assigning
+    # # TODO equal probability to each move
+    #
+    # # This is the basic object that the computer uses to look into possible futures
+    # class Position:
+    #     def __init__(self, move_index, virtual_squares, turn, depth):
+    #         self.move_index = move_index  # Which original move's tree is this node part of?
+    #         self.board = virtual_squares
+    #         self.depth = depth
+    #         self.turn = turn
+    #         self.moves = find_moves(virtual_squares, turn)
+    #
+    # # Search into the future to see how good a move is, communicate by updating moves_scored
+    # to_search = deque()
+    # # Start by populating the search deque with the moves that the computer can make right now
+    # for move_index, starting_move in enumerate(moves_scored):
+    #     new_virtual_squares = duplicate(squares)
+    #     move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
+    #     to_search.append(Position(move_index, new_virtual_squares, True, 1))
+    #
+    # while True:
+    #     if len(to_search) == 0:
+    #         break
+    #
+    #     # Start searching through the deque
+    #     current = to_search.popleft()
+    #
+    #     # If there are captures, these need to be looked at, even if the default search depth is exceeded
+    #     # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
+    #     capturing = False
+    #     for move in current.moves:
+    #         if move[2] != [None]:
+    #             capturing = True
+    #             break
+    #
+    #     # Only generate more positions if certain depth hasn't been reached yet, or there are captures available:
+    #     if current.depth <= 3 or capturing:
+    #         # Generate the child positions:
+    #         for move in current.moves:
+    #             new_virtual_squares = duplicate(current.board)
+    #             move_piece(move[0], move[1], move[2], new_virtual_squares)
+    #             to_search.append(Position(current.move_index, new_virtual_squares,
+    #                                       not current.turn, current.depth + 1))
+    #
+    #     # If no new positions are generated, it's reached end of this search branch, and can now evaluate the position
+    #     else:
+    #         # Analyze the current board situation and adjust moves_scored accordingly
+    #         # Looking for how many pieces each side has
+    #
+    #         red_pieces_count = 0
+    #         black_pieces_count = 0
+    #         for row in current.board:
+    #             for square in row:
+    #                 if square.piece is not None:
+    #                     if square.piece.color is False:
+    #                         if square.piece.king is True:
+    #                             red_pieces_count += 4
+    #                         else:
+    #                             red_pieces_count += 1
+    #                     if square.piece.color is True:
+    #                         if square.piece.king is True:
+    #                             black_pieces_count += 4
+    #                         else:
+    #                             black_pieces_count += 1
+    #
+    #         # Update score
+    #         moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
+    #         # Increment total # of scores (for calculating average later)
+    #         moves_scored[current.move_index][1][1] += 1
+    #
+    #     # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
+    #
+    #     # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
+    #     # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
+    #     # ^ TODO Is this minimax? Idk
+    #     # FIXME The scores for the moves seem to have a lot of noise, is this a good thing?
+    #
+    #     # TODO Add passed piece detection?
+    #     # TODO Add repetition escape feature if computer is winning?
+    #     # TODO Add king prevention feature?
+    #
+    # # Calculate averages
+    # for move in moves_scored:
+    #     score, total = move[1]
+    #     if total > 0:
+    #         move[1] = score / total
+    #     else:
+    #         move[1] = score
 
     # Display moves_scored
     for move in moves_display:
@@ -689,6 +795,7 @@ def computer_move():
     for move in moves_display:
         move.draw(win)
 
+    # TODO Clean this up using list comprehension and max()?
     # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
     highest = None
     best_moves = []
