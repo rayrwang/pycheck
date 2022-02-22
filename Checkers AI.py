@@ -6,7 +6,6 @@
 import graphics as gr
 import random
 from collections import deque
-import time
 
 # The game board
 win = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
@@ -741,6 +740,8 @@ initialize_board()
 # Holds the moves displayed on the debug menu
 moves_display = []
 
+player_won, computer_won = False, False
+
 # Black moves first
 turn = True
 # TODO Make color selection functionality
@@ -825,5 +826,4 @@ elif computer_won:
     computer_won_text.setTextColor("red3")
     computer_won_text.draw(win)
 
-while True:
-    time.sleep(1)
+win.getKey()
