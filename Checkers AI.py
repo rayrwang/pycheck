@@ -501,70 +501,232 @@ def move_piece(old_square, new_square, captured, squares_list):
 
     old_square.piece = None
 
+    # Check to make the piece king if necessary
+    # If piece is red
+    if new_square.piece.color is False:
+        if new_square.row == 8:
+            new_square.piece.king = True
+    # If piece is black
+    if new_square.piece.color is True:
+        if new_square.row == 1:
+            new_square.piece.king = True
+
 
 def player_move():
-    # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
-    click = win.getMouse()
-    click_square_coordinates = click_get_square(click)
+    from collections import deque
+    # These are all the possible moves that the computer must look at:
+    # moves = [[start_square, end_square, [captured, ...]], ...]
+    moves = find_moves(squares)
 
-    # Draw the new connections and highlights
-    if click_square_coordinates is not None:
-        # Read the connections associated with the square
-        click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
+    moves_scored = []  # Holds a score for how good a move is
+    # Initialize moves_scored
+    # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
+    for move in moves:
+        moves_scored.append([move, [0, 0]])
+    del moves
+    # This is the old algorithm (for reference purposes):
+    # Essentially, this algorithm checks for each move the computer might do right now, what is the average number
+    # of pieces that the computer could gain / lose
 
-        # If there are any squares with jumps available, they are the only allowed moves,
-        # otherwise if no jumps available, all moves allowed
-        if squares_with_jump:
-            if click_square_object in squares_with_jump:
-                allowed = True
-            else:
-                allowed = False
+    # These are all the possible moves that the computer must look at:
+    # moves = [[start_square, end_square, [captured, ...]], ...]
+    moves = find_moves(squares, True)
+
+    moves_scored = []  # Holds a score for how good a move is
+    # Initialize moves_scored
+    # moves_scored = [[[start_square, end_square, [captured, ...]], [score, total]], ...]
+    for move in moves:
+        moves_scored.append([move, [0, 0]])
+
+    # TODO Minimax algorithm? So computer also takes into account what the player will probably do, not just assigning
+    # TODO equal probability to each move
+
+    # This is the basic object that the computer uses to look into possible futures
+    class Position:
+        def __init__(self, move_index, virtual_squares, turn, depth):
+            self.move_index = move_index  # Which original move's tree is this node part of?
+            self.board = virtual_squares
+            self.depth = depth
+            self.turn = turn
+            self.moves = find_moves(virtual_squares, turn)
+
+    # Search into the future to see how good a move is, communicate by updating moves_scored
+    to_search = deque()
+    # Start by populating the search deque with the moves that the computer can make right now
+    for move_index, starting_move in enumerate(moves_scored):
+        new_virtual_squares = duplicate(squares)
+        move_piece(starting_move[0][0], starting_move[0][1], starting_move[0][2], new_virtual_squares)
+        to_search.append(Position(move_index, new_virtual_squares, False, 1))
+
+    while True:
+        if len(to_search) == 0:
+            break
+
+        # Start searching through the deque
+        current = to_search.popleft()
+
+        # If there are captures, these need to be looked at, even if the default search depth is exceeded
+        # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
+        capturing = False
+        for move in current.moves:
+            if move[2] != [None]:
+                capturing = True
+                break
+
+        # Only generate more positions if certain depth hasn't been reached yet, or there are captures available:
+        if current.depth <= 3 or capturing:
+            # Generate the child positions:
+            for move in current.moves:
+                new_virtual_squares = duplicate(current.board)
+                move_piece(move[0], move[1], move[2], new_virtual_squares)
+                to_search.append(Position(current.move_index, new_virtual_squares,
+                                          not current.turn, current.depth + 1))
+
+        # If no new positions are generated, it's reached end of this search branch, and can now evaluate the position
         else:
-            allowed = True
+            # Analyze the current board situation and adjust moves_scored accordingly
+            # Looking for how many pieces each side has
 
-        if allowed:
-            # Highlight the piece on the square that was clicked (only if there is a piece present)
-            if click_square_object.piece is not None:
-                # Check if the piece clicked is of the color whose turn it is to move
-                if click_square_object.piece.color == turn:
-                    click_square_object.piece.highlight = True
+            red_pieces_count = 0
+            black_pieces_count = 0
+            for row in current.board:
+                for square in row:
+                    if square.piece is not None:
+                        if square.piece.color is False:
+                            if square.piece.king is True:
+                                red_pieces_count += 4
+                            else:
+                                red_pieces_count += 1
+                        if square.piece.color is True:
+                            if square.piece.king is True:
+                                black_pieces_count += 4
+                            else:
+                                black_pieces_count += 1
 
-                    # Highlight all the possible moves
-                    possible_moves = search(click_square_object, squares)
-                    for move in possible_moves:
-                        move.highlight = True
+            # Update score
+            moves_scored[current.move_index][1][0] += (red_pieces_count - black_pieces_count)
+            # Increment total # of scores (for calculating average later)
+            moves_scored[current.move_index][1][1] += 1
 
-                    # Update the drawing of everything in between mouse clicks
-                    for row in squares:
-                        for square in row:
-                            square.draw_square()
-                            if square.piece is not None:
-                                square.piece.draw_piece()
-                    win.update()
+        # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
 
-                    # Detect whether / where to move the selected piece
-                    second_click = win.getMouse()
-                    second_click_square_coordinates = click_get_square(second_click)
-                    if second_click_square_coordinates is not None:
-                        second_click_square_object = \
-                            squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
-                        if second_click_square_object in possible_moves:
-                            move_piece(click_square_object, second_click_square_object,
-                                       possible_moves[second_click_square_object], squares)
+        # FIXME Fix the scoring algorithm, computer randomly thinks it's winning when it's neutral
+        # TODO This can be done by computer taking into account score of each subsequent move to weigh probability
+        # ^ TODO Is this minimax? Idk
+        # FIXME The scores for the moves seem to have a lot of noise, is this a good thing?
 
-                            # Check to make the piece king if necessary
-                            # If piece is red
-                            if second_click_square_object.piece.color is False:
-                                if second_click_square_object.row == 8:
-                                    second_click_square_object.piece.king = True
-                            # If piece is black
-                            if second_click_square_object.piece.color is True:
-                                if second_click_square_object.row == 1:
-                                    second_click_square_object.piece.king = True
+        # TODO Add passed piece detection?
+        # TODO Add repetition escape feature if computer is winning?
+        # TODO Add king prevention feature?
 
-                            # Tell the program that the player has actually made a move
-                            # (rather than clicked on illegal square)
-                            return True
+    # Calculate averages
+    for move in moves_scored:
+        score, total = move[1]
+        if total > 0:
+            move[1] = score / total
+        else:
+            move[1] = score
+
+    # TODO Clean this up using list comprehension and max()?
+    # Pick out the move(s) with the lowest score in moves_scored, and pick random move from the move(s)
+    lowest = None
+    best_moves = []
+    for i, move in enumerate(moves_scored):
+        if lowest is None:
+            lowest = moves_scored[i][1]
+            best_moves.append(move)
+        else:
+            if moves_scored[i][1] == lowest:
+                best_moves.append(move)
+            elif moves_scored[i][1] < lowest:
+                lowest = moves_scored[i][1]
+                best_moves.clear()
+                best_moves.append(move)
+
+    move_chosen = best_moves[random.randrange(0, len(best_moves))]
+    start_square = move_chosen[0][0]
+    end_square = move_chosen[0][1]
+    captured = move_chosen[0][2]
+
+    move_piece(start_square, end_square, captured, squares)
+
+    # Display moves_scored
+    for move in moves_display:
+        if move is not None:
+            move.undraw()
+
+    moves_display.clear()
+    line = 60
+    for move in moves_scored:
+        if move[1] > 100_000:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : Computer win")
+        elif move[1] < -100_000:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : Player win")
+        else:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : {move[1]:.2f}")
+        text.setSize(10)
+        moves_display.append(text)
+        line += 15
+    for move in moves_display:
+        move.draw(win)
+
+    return True
+
+    # # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
+    # click = win.getMouse()
+    # click_square_coordinates = click_get_square(click)
+    #
+    # # Draw the new connections and highlights
+    # if click_square_coordinates is not None:
+    #     # Read the connections associated with the square
+    #     click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
+    #
+    #     # If there are any squares with jumps available, they are the only allowed moves,
+    #     # otherwise if no jumps available, all moves allowed
+    #     if squares_with_jump:
+    #         if click_square_object in squares_with_jump:
+    #             allowed = True
+    #         else:
+    #             allowed = False
+    #     else:
+    #         allowed = True
+    #
+    #     if allowed:
+    #         # Highlight the piece on the square that was clicked (only if there is a piece present)
+    #         if click_square_object.piece is not None:
+    #             # Check if the piece clicked is of the color whose turn it is to move
+    #             if click_square_object.piece.color == turn:
+    #                 click_square_object.piece.highlight = True
+    #
+    #                 # Highlight all the possible moves
+    #                 possible_moves = search(click_square_object, squares)
+    #                 for move in possible_moves:
+    #                     move.highlight = True
+    #
+    #                 # Update the drawing of everything in between mouse clicks
+    #                 for row in squares:
+    #                     for square in row:
+    #                         square.draw_square()
+    #                         if square.piece is not None:
+    #                             square.piece.draw_piece()
+    #                 win.update()
+    #
+    #                 # Detect whether / where to move the selected piece
+    #                 second_click = win.getMouse()
+    #                 second_click_square_coordinates = click_get_square(second_click)
+    #                 if second_click_square_coordinates is not None:
+    #                     second_click_square_object = \
+    #                         squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
+    #                     if second_click_square_object in possible_moves:
+    #                         move_piece(click_square_object, second_click_square_object,
+    #                                    possible_moves[second_click_square_object], squares)
+    #
+    #                         # Tell the program that the player has actually made a move
+    #                         # (rather than clicked on illegal square)
+    #                         return True
 
 
 # Computer makes a move (with intelligence)
@@ -601,7 +763,7 @@ def computer_move():
     del moves
 
     # Recursive algorithm to do minimax
-    def minimax(board, turn, depth, moves):
+    def minimax(board, turn, depth, moves):  # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -609,12 +771,24 @@ def computer_move():
             if move[2] != [None]:
                 capturing = True
                 break
-        # Check if reached end of branch (certain depth reached and no further captures)
-        if depth > 4 and not capturing:
+
+        # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
+        if depth > 4 and not capturing or moves == []:
+            if moves == []:
+                # If it's the computer's turn, and it can't move
+                if turn is False:
+                    return -1_000_000
+                # If it's the player's turn, and they can't move
+                if turn is True:
+                    return 1_000_000
+
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
             # TODO Add win / loss detection to move score calculation
             # TODO Or other evaluation factors
+
+            # TODO Add endgame strategy algorithm?
+            # TODO Add chasing down opponent piece and cornering opponent king feature?
 
             red_pieces_count = 0
             black_pieces_count = 0
@@ -771,22 +945,6 @@ def computer_move():
     #     else:
     #         move[1] = score
 
-    # Display moves_scored
-    for move in moves_display:
-        if move is not None:
-            move.undraw()
-
-    moves_display.clear()
-    line = 60
-    for move in moves_scored:
-        text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                            f"{move[0][1].row} {move[0][1].pos} : {move[1]:.2f}")
-        text.setSize(10)
-        moves_display.append(text)
-        line += 15
-    for move in moves_display:
-        move.draw(win)
-
     # TODO Clean this up using list comprehension and max()?
     # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
     highest = None
@@ -810,15 +968,28 @@ def computer_move():
 
     move_piece(start_square, end_square, captured, squares)
 
-    # Check to make the piece king if necessary
-    # If piece is red
-    if end_square.piece.color is False:
-        if end_square.row == 8:
-            end_square.piece.king = True
-    # If piece is black
-    if end_square.piece.color is True:
-        if end_square.row == 1:
-            end_square.piece.king = True
+    # Display moves_scored
+    for move in moves_display:
+        if move is not None:
+            move.undraw()
+
+    moves_display.clear()
+    line = 60
+    for move in moves_scored:
+        if move[1] > 100_000:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : Computer win")
+        elif move[1] < -100_000:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : Player win")
+        else:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : {move[1]:.2f}")
+        text.setSize(10)
+        moves_display.append(text)
+        line += 15
+    for move in moves_display:
+        move.draw(win)
 
     return True
 
