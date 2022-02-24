@@ -602,6 +602,7 @@ def computer_move():
 
     # Recursive algorithm to do minimax
     def minimax(board, turn, depth, moves):
+        # FIXME Algorithm randomly sacrifices pieces for no apparent reason
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -610,8 +611,30 @@ def computer_move():
                 capturing = True
                 break
 
+        # Check for a non-king piece nearing the end-zone, if there are any the algorithm needs to keep searching
+        # past default search depth
+        end_zone = False
+        new_moves = []
+        for move in moves:
+            # If the starting square's piece is red
+            if move[0].piece.color is False:
+                # And it's a normal piece and entering the end-zone
+                if move[0].piece.king is False and move[0].row in [5, 6, 7]:
+                    end_zone = True
+                    new_moves.append(move)
+            # If the starting square's piece is black
+            if move[0].piece.color is True:
+                # And it's a normal piece and entering the end-zone
+                if move[0].piece.king is False and move[0].row in [2, 3, 4]:
+                    end_zone = True
+                    new_moves.append(move)
+
+        # If there are end zone pieces to be checked, only need to check those moves so less resource intensive
+        if end_zone:
+            moves = new_moves
+
         # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
-        if depth > 4 and not capturing or moves == []:
+        if depth > 4 and not capturing and not end_zone or moves == []:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
 
@@ -653,7 +676,7 @@ def computer_move():
                                 red_pieces_score += 1
                                 # Check for the back row pieces
                                 if square.piece.row == 1 and square.piece.pos in [1, 3]:
-                                    red_pieces_score += 0.25
+                                    red_pieces_score += 0.5
                         if square.piece.color is True:
                             # Check if piece is in center of board, slightly better position
                             if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
@@ -665,7 +688,7 @@ def computer_move():
                                 black_pieces_score += 1
                                 # Check for the back row pieces
                                 if square.piece.row == 8 and square.piece.pos in [2, 4]:
-                                    black_pieces_score += 0.25
+                                    black_pieces_score += 0.5
 
             score = red_pieces_score - black_pieces_score
             return score
