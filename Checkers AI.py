@@ -601,7 +601,9 @@ def computer_move():
     del moves
 
     # Recursive algorithm to do minimax
-    def minimax(board, turn, depth, moves):
+    def minimax(board, turn, depth, moves, end_piece_moved):
+        # end_piece_moved is whether a piece
+
         # FIXME Algorithm randomly sacrifices pieces for no apparent reason
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
