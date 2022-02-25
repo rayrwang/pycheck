@@ -614,24 +614,19 @@ def computer_move():
         # Check for a non-king piece nearing the end-zone, if there are any the algorithm needs to keep searching
         # past default search depth
         end_zone = False
-        new_moves = []
         for move in moves:
             # If the starting square's piece is red
             if move[0].piece.color is False:
                 # And it's a normal piece and entering the end-zone
-                if move[0].piece.king is False and move[0].row in [5, 6, 7]:
+                if move[0].piece.king is False and move[0].row in [6, 7]:
                     end_zone = True
-                    new_moves.append(move)
+                    break
             # If the starting square's piece is black
             if move[0].piece.color is True:
                 # And it's a normal piece and entering the end-zone
-                if move[0].piece.king is False and move[0].row in [2, 3, 4]:
+                if move[0].piece.king is False and move[0].row in [2, 3]:
                     end_zone = True
-                    new_moves.append(move)
-
-        # If there are end zone pieces to be checked, only need to check those moves so less resource intensive
-        if end_zone:
-            moves = new_moves
+                    break
 
         # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
         if depth > 4 and not capturing and not end_zone or moves == []:
