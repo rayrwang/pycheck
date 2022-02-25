@@ -602,9 +602,8 @@ def computer_move():
 
     # Recursive algorithm to do minimax
     def minimax(board, turn, depth, moves, end_piece_moved):
-        # end_piece_moved is whether a piece
+        # end_piece_moved is whether a piece in the end-zone move last move, if yes, must continue this branch
 
-        # FIXME Algorithm randomly sacrifices pieces for no apparent reason
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
         # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
         capturing = False
@@ -613,42 +612,27 @@ def computer_move():
                 capturing = True
                 break
 
-        # Check for a non-king piece nearing the end-zone, if there are any the algorithm needs to keep searching
-        # past default search depth
-        end_zone = False
-        for move in moves:
-            # If the starting square's piece is red
-            if move[0].piece.color is False:
-                # And it's a normal piece and entering the end-zone
-                if move[0].piece.king is False and move[0].row in [6, 7]:
-                    end_zone = True
-                    break
-            # If the starting square's piece is black
-            if move[0].piece.color is True:
-                # And it's a normal piece and entering the end-zone
-                if move[0].piece.king is False and move[0].row in [2, 3]:
-                    end_zone = True
-                    break
-
         # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
-        if depth > 4 and not capturing and not end_zone or moves == []:
+        if depth > 4 and not capturing and not end_piece_moved or moves == []:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
 
-            # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king
+            # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king (maybe)
 
-            # TODO Add endgame strategy algorithm?
-            # TODO Add chasing down opponent piece and cornering opponent king feature?
+            # TODO Add endgame strategy algorithm
+            # TODO Add king chasing down opponent piece and cornering opponent king feature
 
             # TODO Add piece formation and overextension evaluation
 
             # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
 
-            # TODO Add passed piece detection?
-            # TODO Add repetition escape feature if computer is winning?
-            # TODO Add king detection / prevention feature?
+            # TODO Add repetition escape feature if computer is winning
+            # TODO Add start using the king more if one side has a king and the other side doesn't
 
-            if moves == []:
+            # TODO Add more advanced king detection, where there are no pieces blocking it, not just nearing end-zone
+
+            # If there are no more possible moves
+            if not moves:
                 # If it's the computer's turn, and it can't move
                 if turn is False:
                     return -1_000_000
@@ -656,7 +640,13 @@ def computer_move():
                 if turn is True:
                     return 1_000_000
 
-            # Score the pieces, 1 for normal piece, 3 for king, and +0.5 for the 2 crucial back row pieces
+            # Current scoring scheme:
+                # 1 for normal piece, 3 for king
+                # +0.1 if it's in the center 4x4
+                # an additional +0.15 on top of that if it's in the center 2x2
+
+                # +0.5 bonus if it's a normal piece, and it's on one of the two back row squares
+                # that control the whole back area
             red_pieces_score = 0
             black_pieces_score = 0
             for row in board:
@@ -666,6 +656,9 @@ def computer_move():
                             # Check if piece is in center of board, slightly better position
                             if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
                                 red_pieces_score += 0.1
+                            if square.piece.row == 4 and square.piece.pos == 3 or \
+                                    square.piece.row == 5 and square.piece.pos == 2:
+                                red_pieces_score += 0.15
 
                             if square.piece.king is True:
                                 red_pieces_score += 3
@@ -674,10 +667,14 @@ def computer_move():
                                 # Check for the back row pieces
                                 if square.piece.row == 1 and square.piece.pos in [1, 3]:
                                     red_pieces_score += 0.5
+
                         if square.piece.color is True:
                             # Check if piece is in center of board, slightly better position
                             if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
                                 black_pieces_score += 0.1
+                            if square.piece.row == 4 and square.piece.pos == 3 or \
+                                    square.piece.row == 5 and square.piece.pos == 2:
+                                black_pieces_score += 0.15
 
                             if square.piece.king is True:
                                 black_pieces_score += 3
@@ -694,9 +691,23 @@ def computer_move():
         if turn is False:
             max_value = None
             for move in moves:
+                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
+                # If the piece is red
+                new_end_piece_moved = False
+                if move[0].piece.color is False:
+                    if move[0].piece.king is False:
+                        if move[1].row in [6, 7]:
+                            new_end_piece_moved = True
+                # If the piece is black
+                if move[0].piece.color is True:
+                    if move[0].piece.king is False:
+                        if move[1].row in [2, 3]:
+                            new_end_piece_moved = True
+
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares, not turn))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1,
+                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved)
                 if max_value is None:
                     max_value = new_value
                 else:
@@ -708,9 +719,23 @@ def computer_move():
         if turn is True:
             min_value = None
             for move in moves:
+                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
+                # If the piece is red
+                new_end_piece_moved = False
+                if move[0].piece.color is False:
+                    if move[0].piece.king is False:
+                        if move[1].row in [6, 7]:
+                            new_end_piece_moved = True
+                # If the piece is black
+                if move[0].piece.color is True:
+                    if move[0].piece.king is False:
+                        if move[1].row in [1, 2]:
+                            new_end_piece_moved = True
+
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1, find_moves(new_virtual_squares, not turn))
+                new_value = minimax(new_virtual_squares, not turn, depth + 1,
+                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved)
                 if min_value is None:
                     min_value = new_value
                 else:
@@ -721,7 +746,7 @@ def computer_move():
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares, True))
+        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares, True), False)
 
     # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
     highest = None
