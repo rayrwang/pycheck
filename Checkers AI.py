@@ -317,6 +317,20 @@ def find_moves(squares_list, side=False):
                         if search(square, squares_list) != {}:
                             moves.append([square, search(square, squares_list)])
 
+    # Per force jump rule: if one piece has multiple jumps, it must take the one(s) with the most jumps
+    if force_jumps:
+        for whole_move in moves:
+            end_and_captured = whole_move[1]
+            max_captured = 0
+            for end in end_and_captured:
+                captured_length = len(end_and_captured[end])
+                if captured_length > max_captured:
+                    max_captured = captured_length
+            for end in end_and_captured.copy():
+                if len(end_and_captured[end]) < max_captured:
+                    end_and_captured.pop(end)
+    # TODO Figure out force jump additional constraint ^ (doesn't work right now)
+
     # Flatten the list of possible moves (so it's easier to work with)
     moves_flat = []
     for whole_move in moves:
