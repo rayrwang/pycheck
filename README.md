@@ -1,7 +1,8 @@
 # Checkers-AI
 
-(Program is still a work in progress)
 This program implements a checkers game and a computer opponent.
+
+The first version that seems to be as strong as a person is v4.1.
 
 Required modules: graphics.py
 
