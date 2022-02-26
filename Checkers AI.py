@@ -745,6 +745,7 @@ def computer_move():
                         min_value = new_value
             return min_value
 
+    # TODO Increase search depth as number of pieces decreases
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
