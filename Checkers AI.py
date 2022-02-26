@@ -601,7 +601,7 @@ def computer_move():
     del moves
 
     # Recursive algorithm to do minimax
-    def minimax(board, turn, depth, moves, end_piece_moved):
+    def minimax(board, turn, depth, moves, end_piece_moved, search_depth=4):
         # end_piece_moved is whether a piece in the end-zone move last move, if yes, must continue this branch
 
         # If there are captures, these need to be looked at, even if the default search depth is exceeded
@@ -613,7 +613,7 @@ def computer_move():
                 break
 
         # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
-        if depth > 4 and not capturing and not end_piece_moved or moves == []:
+        if depth > search_depth and not capturing and not end_piece_moved or moves == []:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
 
@@ -632,6 +632,8 @@ def computer_move():
             # TODO Add more advanced king detection, where there are no pieces blocking it, not just nearing end-zone
 
             # TODO Use neural nets to play better
+
+            # TODO Fine tune some of the custom values (think about them more)
 
             # If there are no more possible moves
             if not moves:
@@ -689,6 +691,19 @@ def computer_move():
             score = red_pieces_score - black_pieces_score
             return score
 
+        # Dynamically adjust the search depth depending on how complex the board position is
+        new_search_depth = 4
+        if not capturing:  # If there are force jumps, the complexity would appear artificially low
+            moves_count = len(moves)
+            if moves_count in [4, 5]:
+                new_search_depth = 5
+            elif moves_count == 3:
+                new_search_depth = 6
+            elif moves_count == 2:
+                new_search_depth = 8
+            elif moves_count == 1:
+                new_search_depth = 12
+
         # If it's red (the computer's) turn
         if turn is False:
             max_value = None
@@ -709,7 +724,7 @@ def computer_move():
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
                 new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved)
+                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
                 if max_value is None:
                     max_value = new_value
                 else:
@@ -737,7 +752,7 @@ def computer_move():
                 new_virtual_squares = duplicate(board)
                 move_piece(move[0], move[1], move[2], new_virtual_squares)
                 new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved)
+                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
                 if min_value is None:
                     min_value = new_value
                 else:
@@ -745,7 +760,6 @@ def computer_move():
                         min_value = new_value
             return min_value
 
-    # TODO Increase search depth as number of pieces decreases
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
