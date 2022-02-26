@@ -631,6 +631,8 @@ def computer_move():
 
             # TODO Add more advanced king detection, where there are no pieces blocking it, not just nearing end-zone
 
+            # TODO Use neural nets to play better
+
             # If there are no more possible moves
             if not moves:
                 # If it's the computer's turn, and it can't move
