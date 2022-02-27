@@ -330,6 +330,7 @@ def find_moves(squares_list, side=False):
                 if len(end_and_captured[end]) < max_captured:
                     end_and_captured.pop(end)
     # TODO Figure out force jump additional constraint ^ (doesn't work right now)
+    # TODO Figure out ambiguous multiple jump situation
 
     # Flatten the list of possible moves (so it's easier to work with)
     moves_flat = []
