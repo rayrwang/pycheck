@@ -292,7 +292,7 @@ def duplicate(squares_list):
 
 
 # Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
-def find_moves(squares_list, side=False):
+def find_moves(squares_list, side):
     # Figure out if there are any force jumps, and what they are
     force_jumps = []
     for row in squares_list:
@@ -316,21 +316,6 @@ def find_moves(squares_list, side=False):
                     if square.piece.color == side:
                         if search(square, squares_list) != {}:
                             moves.append([square, search(square, squares_list)])
-
-    # Per force jump rule: if one piece has multiple jumps, it must take the one(s) with the most jumps
-    if force_jumps:
-        for whole_move in moves:
-            end_and_captured = whole_move[1]
-            max_captured = 0
-            for end in end_and_captured:
-                captured_length = len(end_and_captured[end])
-                if captured_length > max_captured:
-                    max_captured = captured_length
-            for end in end_and_captured.copy():
-                if len(end_and_captured[end]) < max_captured:
-                    end_and_captured.pop(end)
-    # TODO Figure out force jump additional constraint ^ (doesn't work right now)
-    # TODO Figure out ambiguous multiple jump situation
 
     # Flatten the list of possible moves (so it's easier to work with)
     moves_flat = []
@@ -374,6 +359,7 @@ def click_get_square(point):
     return row, int(pos)
 
 
+# fixme Rearrange the order of the functions to make more sense
 # Finds all the possible moves for the piece on a certain square
 def search(start, squares_list):
     # square_list is whether searching "squares" or "virtual_squares"
@@ -417,7 +403,6 @@ def search(start, squares_list):
                         other_side_square = squares_list[other_side[0] - 1][other_side[1] - 1]
                         # And check if the square on the other side is empty, to be able to jump it
                         if other_side_square.piece is None:
-                            moves.update({other_side_square: [connection_square]})
 
                             # Figure out the rest of the possible jumps (similar to the main for loop, but only looking
                             # for jumps, not regular moves)
@@ -425,10 +410,11 @@ def search(start, squares_list):
                             visited = []
 
                             def find_all_jumps(start_from, previous_captured):
+                                end_reached_overall = True
                                 for connection_type in start_from.connections:
+                                    all_captured = previous_captured.copy()
+                                    end_reached = False
                                     if connection_type in allowed_jumps:
-                                        end_reached = False
-                                        all_captured = previous_captured.copy()
                                         new_connection = start_from.connections[connection_type]
                                         if new_connection is not None:
                                             new_connection_square = squares_list[new_connection[0] - 1] \
@@ -444,7 +430,6 @@ def search(start, squares_list):
                                                                     [new_other_side[1] - 1]
                                                             if new_other_side_square.piece is None:
                                                                 all_captured.append(new_connection_square)
-                                                                moves.update({new_other_side_square: all_captured})
                                                                 visited.append(new_connection_square)
                                                             else:
                                                                 end_reached = True
@@ -462,13 +447,18 @@ def search(start, squares_list):
                                         end_reached = True
 
                                     if end_reached is False:
+                                        end_reached_overall = False
                                         # Recursion if needed
                                         find_all_jumps(new_other_side_square, all_captured)
 
+                                # If no more moves in each of the 4 directions
+                                if end_reached_overall:
+                                    moves.update({start_from: previous_captured})
+
                             find_all_jumps(other_side_square, [connection_square])
 
-    # Implement the force jump rule for each piece (also need implementation for all pieces, to see if any of them
-    # have an opportunity to jump), this is done elsewhere
+    # Implement the force jump rule for each piece,
+    # meaning that if a piece has available jumps, it must take one of them, rather than an ordinary move
     jump_available = False
     for any_captured in moves.values():
         if any_captured != [None]:
@@ -478,6 +468,8 @@ def search(start, squares_list):
         for move in moves.copy():
             if moves[move] == [None]:
                 moves.pop(move)
+
+    # todo Add ambiguous jump handling
 
     # search() outputs dictionary {possible_move_1 <Square>: [captured pieces <Square>, ...], ...}
     return moves
@@ -537,15 +529,18 @@ def player_move():
         # Read the connections associated with the square
         click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
 
+        # Find which moves are possible from the current position
+        allowed_moves = find_moves(squares, turn)
+        allowed_starts = []
+        for move in allowed_moves:
+            allowed_starts.append(move[0])
+
         # If there are any squares with jumps available, they are the only allowed moves,
         # otherwise if no jumps available, all moves allowed
-        if squares_with_jump:
-            if click_square_object in squares_with_jump:
-                allowed = True
-            else:
-                allowed = False
-        else:
+        if click_square_object in allowed_starts:
             allowed = True
+        else:
+            allowed = False
 
         if allowed:
             # Highlight the piece on the square that was clicked (only if there is a piece present)
@@ -606,7 +601,7 @@ def computer_move():
 
     # These are all the possible moves that the computer must look at:
     # moves = [[start_square, end_square, [captured, ...]], ...]
-    moves = find_moves(squares)
+    moves = find_moves(squares, False)
 
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored
@@ -640,6 +635,7 @@ def computer_move():
             # TODO Add piece formation and overextension evaluation
 
             # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
+            # todo Change program into C++ to run faster
 
             # TODO Add repetition escape feature if computer is winning
             # TODO Add start using the king more if one side has a king and the other side doesn't
@@ -660,12 +656,12 @@ def computer_move():
                     return 1_000_000
 
             # Current scoring scheme:
-                # 1 for normal piece, 3 for king
-                # +0.1 if it's in the center 4x4
-                # an additional +0.15 on top of that if it's in the center 2x2
+            # 1 for normal piece, 3 for king
+            # +0.1 if it's in the center 4x4
+            # an additional +0.15 on top of that if it's in the center 2x2
 
-                # +0.5 bonus if it's a normal piece, and it's on one of the two back row squares
-                # that control the whole back area
+            # +0.5 bonus if it's a normal piece, and it's on one of the two back row squares
+            # that control the whole back area
             red_pieces_score = 0
             black_pieces_score = 0
             for row in board:
@@ -866,18 +862,6 @@ while True:
             if square.piece is not None:
                 square.piece.draw_piece()
     win.update()
-
-    # See if any jumps are available (for force jump rule)
-    squares_with_jump = []
-    for row in squares:
-        for square in row:
-            if square.piece is not None:
-                # Only need to check for available jumps for the color whose turn it is
-                if square.piece.color == turn:
-                    for captured_list in search(square, squares).values():
-                        if captured_list != [None]:  # If there are possible captures for the piece on this square
-                            squares_with_jump.append(square)
-                            break
 
     # If it's the player's turn
     if turn is True:
