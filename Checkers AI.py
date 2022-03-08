@@ -637,7 +637,8 @@ def computer_move():
                 capturing = True
                 break
 
-        # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
+        # Check if reached end of branch (certain depth reached and no further captures
+        # and no pieces near the end-zone moves), or no more possible moves
         if depth > search_depth and not capturing and not end_piece_moved or moves == []:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
@@ -729,7 +730,6 @@ def computer_move():
                 new_search_depth = 12
 
         # fixme The king (end-zone) detection turns out to not work that well, as well as being slow, improve it
-        # todo Have the computer play itself, seems fun, but compatibility problems to work out
         # If it's the computer's turn
         if turn is not player_color:
             min_value = None
