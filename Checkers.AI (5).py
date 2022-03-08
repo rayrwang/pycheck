@@ -728,6 +728,7 @@ def computer_move():
             elif moves_count == 1:
                 new_search_depth = 12
 
+        # fixme The king (end-zone) detection turns out to not work that well, as well as being slow, improve it
         # If it's the computer's turn
         if turn is not player_color:
             min_value = None
