@@ -536,304 +536,61 @@ def move_piece(old_square, new_square, captured, squares_list):
 
 
 def player_move():
-    # The computer uses the minimax algorithm to decide how to move next
-    # Basically, the algorithm makes a tree with all possible future moves as deep as possible, limited by
-    # processing power and memory
-    # Then it evaluates each of these end positions (not every position along the way, just the end positions)
-    # The criteria used right now is counting pieces, regular pieces worth 1 and kings worth 3
-    # Maybe other more advanced evaluation criteria later
-    # Let the score be positive if it thinks the player is winning
-    # Now, for the layer one shallower than the one with the scores, for each position node on that layer,
-    # if (for the positions on that layer) it's red (the computer's) turn, each position node will take on
-    # the maximum score of its child nodes
-    # This is because were the game to reach that position, red (the computer) would play the move that maximizes
-    # the score
-    # Conversely, if the layer is black (the player's) turn, then the parent node will take on the minimum value
-    # of its child nodes
-    # Since the player would want to minimize the advantage for the computer, which meaning maximizing the advantage
-    # for the player
-    # Repeat this process until the layer below the current position has numerical scores
-    # Then the computer makes the move with the maximum score
-    # Now let's implement this in code:
+    # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
+    click = game_board.getMouse()
+    click_square_coordinates = click_get_square(click)
 
-    # These are all the possible moves that the computer must look at:
-    # moves = [[start_square, end_square, [captured, ...]], ...]
-    moves = find_moves(squares, not player_color)
+    # Draw the new connections and highlights
+    if click_square_coordinates is not None:
+        # Read the connections associated with the square
+        click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
 
-    moves_scored = []  # Holds a score for how good a move is
-    # Initialize moves_scored
-    # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
-    for move in moves:
-        moves_scored.append([move, 0])
+        # Find which moves are possible from the current position
+        allowed_moves = find_moves(squares, turn)
+        allowed_starts = []
+        for move in allowed_moves:
+            allowed_starts.append(move[0])
 
-    # Recursive algorithm to do minimax
-    def minimax(board, turn, depth, moves, end_piece_moved, search_depth=4):
-        # end_piece_moved is whether a piece in the end-zone move last move, if yes, must continue this branch
-
-        # If there are captures, these need to be looked at, even if the default search depth is exceeded
-        # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
-        capturing = False
-        for move in moves:
-            if move[2] != [None]:
-                capturing = True
-                break
-
-        # Check if reached end of branch (certain depth reached and no further captures, or no more possible moves)
-        if depth > search_depth and not capturing and not end_piece_moved or moves == []:
-            # Analyze the current board situation to give it a score
-            # Looking for how many pieces each side has
-
-            # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king (maybe)
-
-            # TODO Add endgame strategy algorithm
-            # TODO Add king chasing down opponent pieces and cornering opponent king feature
-
-            # TODO Add piece formation and overextension evaluation
-
-            # TODO Use multiprocessing and algorithm optimization to search more efficiently / deeper
-            # todo Change program into C++ to run faster
-
-            # TODO Add repetition escape feature if computer is winning
-            # TODO Add start using the king more if one side has a king and the other side doesn't
-
-            # TODO Add more advanced king detection, where there are no pieces blocking it, not just nearing end-zone
-
-            # TODO Use neural nets to play better
-
-            # If there are no more possible moves
-            if not moves:
-                # If it's the computer's turn, and it can't move
-                if turn is not player_color:
-                    return 1_000_000
-                # If it's the player's turn, and they can't move
-                if turn is player_color:
-                    return -1_000_000
-
-            # Current scoring scheme:
-            # 1 for normal piece, 3 for king
-            # +0.1 if it's in the center 4x4
-            # an additional +0.05 on top of that if it's in the center 2x2
-
-            # +0.5 bonus if it's a normal piece, and it's on one of the two back row squares
-            # that control the whole back area
-            computer_pieces_score = 0
-            player_pieces_score = 0
-            for row in board:
-                for square in row:
-                    if square.piece is not None:
-                        if square.piece.color is not player_color:
-                            # Check if piece is in center of board, slightly better position
-                            if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
-                                computer_pieces_score += 0.1
-                            if square.piece.row == 4 and square.piece.pos == 3 or \
-                                    square.piece.row == 5 and square.piece.pos == 2:
-                                computer_pieces_score += 0.05
-
-                            if square.piece.king is True:
-                                computer_pieces_score += 3
-                            else:
-                                computer_pieces_score += 1
-                                # Check for the back row pieces
-                                if square.piece.row == 1 and square.piece.pos in [1, 3]:
-                                    computer_pieces_score += 0.5
-
-                        if square.piece.color is player_color:
-                            # Check if piece is in center of board, slightly better position
-                            if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
-                                player_pieces_score += 0.1
-                            if square.piece.row == 4 and square.piece.pos == 3 or \
-                                    square.piece.row == 5 and square.piece.pos == 2:
-                                player_pieces_score += 0.05
-
-                            if square.piece.king is True:
-                                player_pieces_score += 3
-                            else:
-                                player_pieces_score += 1
-                                # Check for the back row pieces
-                                if square.piece.row == 8 and square.piece.pos in [2, 4]:
-                                    player_pieces_score += 0.5
-
-            score = player_pieces_score - computer_pieces_score
-            return score
-
-        # Dynamically adjust the search depth depending on how complex the board position is
-        new_search_depth = 4
-        if not capturing:  # If there are force jumps, the complexity would appear artificially low
-            moves_count = len(moves)
-            if moves_count in [4, 5]:
-                new_search_depth = 5
-            elif moves_count == 3:
-                new_search_depth = 6
-            elif moves_count == 2:
-                new_search_depth = 8
-            elif moves_count == 1:
-                new_search_depth = 12
-
-        # If it's the computer's turn
-        if turn is not player_color:
-            min_value = None
-            for move in moves:
-                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
-                new_end_piece_moved = False
-                # If the piece is from the side at the top of the board
-                if move[0].piece.color is not player_color:
-                    if move[0].piece.king is False:
-                        if move[1].row in [6, 7]:
-                            new_end_piece_moved = True
-                # If the piece is from the side at the bottom of the board
-                if move[0].piece.color is player_color:
-                    if move[0].piece.king is False:
-                        if move[1].row in [2, 3]:
-                            new_end_piece_moved = True
-
-                new_virtual_squares = duplicate(board)
-                move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
-                if min_value is None:
-                    min_value = new_value
-                else:
-                    if new_value < min_value:
-                        min_value = new_value
-            return min_value
-
-        # If it's the player's turn
-        if turn is player_color:
-            max_value = None
-            for move in moves:
-                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
-                new_end_piece_moved = False
-                # If the piece is from the side at top of board
-                if move[0].piece.color is not player_color:
-                    if move[0].piece.king is False:
-                        if move[1].row in [6, 7]:
-                            new_end_piece_moved = True
-                # If the piece is from the side at bottom of board
-                if move[0].piece.color is player_color:
-                    if move[0].piece.king is False:
-                        if move[1].row in [1, 2]:
-                            new_end_piece_moved = True
-
-                new_virtual_squares = duplicate(board)
-                move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
-                if max_value is None:
-                    max_value = new_value
-                else:
-                    if new_value > max_value:
-                        max_value = new_value
-            return max_value
-
-    for move in moves_scored:
-        new_virtual_squares = duplicate(squares)
-        move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, player_color, 1, find_moves(new_virtual_squares, player_color), False)
-
-    # Pick out the move(s) with the lowest score in moves_scored (meaning worst for player, best for computer),
-    # and pick random move from the move(s)
-    lowest = None
-    best_moves = []
-    for i, move in enumerate(moves_scored):
-        if lowest is None:
-            lowest = moves_scored[i][1]
-            best_moves.append(move)
+        # If there are any squares with jumps available, they are the only allowed moves,
+        # otherwise if no jumps available, all moves allowed
+        if click_square_object in allowed_starts:
+            allowed = True
         else:
-            if moves_scored[i][1] == lowest:
-                best_moves.append(move)
-            elif moves_scored[i][1] < lowest:
-                lowest = moves_scored[i][1]
-                best_moves.clear()
-                best_moves.append(move)
+            allowed = False
 
-    move_chosen = best_moves[random.randrange(0, len(best_moves))]
-    start_square = move_chosen[0][0]
-    end_square = move_chosen[0][1]
-    captured = move_chosen[0][2]
+        if allowed:
+            # Highlight the piece on the square that was clicked (only if there is a piece present)
+            if click_square_object.piece is not None:
+                # Check if the piece clicked is of the color whose turn it is to move
+                if click_square_object.piece.color == turn:
+                    click_square_object.piece.highlight = True
 
-    move_piece(start_square, end_square, captured, squares)
+                    # Highlight all the possible moves
+                    possible_moves = search(click_square_object, squares)
+                    for move in possible_moves:
+                        move.highlight = True
 
-    # Display moves_scored
-    for move in moves_display:
-        if move is not None:
-            move.undraw()
+                    # Update the drawing of everything in between mouse clicks
+                    for row in squares:
+                        for square in row:
+                            square.draw_square()
+                            if square.piece is not None:
+                                square.piece.draw_piece()
+                    game_board.update()
 
-    moves_display.clear()
-    line = 60
-    for move in moves_scored:
-        score = move[1]
-        if score > 100_000:
-            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                f"{move[0][1].row} {move[0][1].pos} : Player win")
-        elif score < -100_000:
-            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                f"{move[0][1].row} {move[0][1].pos} : Computer win")
-        else:
-            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                f"{move[0][1].row} {move[0][1].pos} : {score:.2f}")
-        text.setSize(10)
-        moves_display.append(text)
-        line += 15
-    for move in moves_display:
-        move.draw(game_board)
+                    # Detect whether / where to move the selected piece
+                    second_click = game_board.getMouse()
+                    second_click_square_coordinates = click_get_square(second_click)
+                    if second_click_square_coordinates is not None:
+                        second_click_square_object = \
+                            squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
+                        if second_click_square_object in possible_moves:
+                            move_piece(click_square_object, second_click_square_object,
+                                       possible_moves[second_click_square_object], squares)
 
-    return True
-
-    # # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
-    # click = game_board.getMouse()
-    # click_square_coordinates = click_get_square(click)
-    #
-    # # Draw the new connections and highlights
-    # if click_square_coordinates is not None:
-    #     # Read the connections associated with the square
-    #     click_square_object = squares[click_square_coordinates[0] - 1][click_square_coordinates[1] - 1]
-    #
-    #     # Find which moves are possible from the current position
-    #     allowed_moves = find_moves(squares, turn)
-    #     allowed_starts = []
-    #     for move in allowed_moves:
-    #         allowed_starts.append(move[0])
-    #
-    #     # If there are any squares with jumps available, they are the only allowed moves,
-    #     # otherwise if no jumps available, all moves allowed
-    #     if click_square_object in allowed_starts:
-    #         allowed = True
-    #     else:
-    #         allowed = False
-    #
-    #     if allowed:
-    #         # Highlight the piece on the square that was clicked (only if there is a piece present)
-    #         if click_square_object.piece is not None:
-    #             # Check if the piece clicked is of the color whose turn it is to move
-    #             if click_square_object.piece.color == turn:
-    #                 click_square_object.piece.highlight = True
-    #
-    #                 # Highlight all the possible moves
-    #                 possible_moves = search(click_square_object, squares)
-    #                 for move in possible_moves:
-    #                     move.highlight = True
-    #
-    #                 # Update the drawing of everything in between mouse clicks
-    #                 for row in squares:
-    #                     for square in row:
-    #                         square.draw_square()
-    #                         if square.piece is not None:
-    #                             square.piece.draw_piece()
-    #                 game_board.update()
-    #
-    #                 # Detect whether / where to move the selected piece
-    #                 second_click = game_board.getMouse()
-    #                 second_click_square_coordinates = click_get_square(second_click)
-    #                 if second_click_square_coordinates is not None:
-    #                     second_click_square_object = \
-    #                         squares[second_click_square_coordinates[0] - 1][second_click_square_coordinates[1] - 1]
-    #                     if second_click_square_object in possible_moves:
-    #                         move_piece(click_square_object, second_click_square_object,
-    #                                    possible_moves[second_click_square_object], squares)
-    #
-    #                         # Tell the program that the player has actually made a move
-    #                         # (rather than clicked on illegal square)
-    #                         return True
+                            # Tell the program that the player has actually made a move
+                            # (rather than clicked on illegal square)
+                            return True
 
 
 # Computer makes a move (with intelligence)
@@ -888,7 +645,7 @@ def computer_move():
             # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king (maybe)
 
             # TODO Add endgame strategy algorithm
-            # TODO Add king chasing down opponent pieces and cornering opponent king feature
+            # TODO Add king chasing down opponent piece and cornering opponent king feature
 
             # TODO Add piece formation and overextension evaluation
 
@@ -901,6 +658,8 @@ def computer_move():
             # TODO Add more advanced king detection, where there are no pieces blocking it, not just nearing end-zone
 
             # TODO Use neural nets to play better
+
+            # TODO Fine tune some of the custom values (think about them more)
 
             # If there are no more possible moves
             if not moves:
@@ -1153,9 +912,7 @@ while True:
             computer_won = True
             break
 
-        player_color = not player_color
         moved = player_move()
-        player_color = not player_color
 
     # If it's the computer's turn
     else:
