@@ -388,7 +388,7 @@ def search(start, squares_list):
 
     # Make sure that if the piece isn't a king, that it doesn't jump backwards
     # Only need to check this extra thing if the piece isn't a king
-    if start.piece.king is False:
+    if start.piece.king is False:  # fixme There might be a problem with this in computer's projections, take a look
         # If the piece is at the top of the board
         if start.piece.color is not player_color:
             # Can only jump downwards (forwards from red's perspective)
