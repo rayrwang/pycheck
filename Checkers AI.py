@@ -729,6 +729,7 @@ def computer_move():
                 new_search_depth = 12
 
         # fixme The king (end-zone) detection turns out to not work that well, as well as being slow, improve it
+        # todo Have the computer play itself, seems fun, but compatibility problems to work out
         # If it's the computer's turn
         if turn is not player_color:
             min_value = None
