@@ -7,7 +7,7 @@ import graphics as gr
 import random
 
 # The game board
-win = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
+game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
 
 
 def initialize_board():
@@ -17,7 +17,7 @@ def initialize_board():
         new_row = gr.Line(gr.Point(50, row_coordinates), gr.Point(450, row_coordinates))
         rows.append(new_row)
     for row in rows:
-        row.draw(win)
+        row.draw(game_board)
 
     # Draw the columns
     columns = []
@@ -25,13 +25,13 @@ def initialize_board():
         new_columns = gr.Line(gr.Point(column_coordinates, 50), gr.Point(column_coordinates, 450))
         columns.append(new_columns)
     for column in columns:
-        column.draw(win)
+        column.draw(game_board)
 
     # Text that says "Debug"
     debug_heading = gr.Text(gr.Point(575, 25), "Debug")
     debug_heading.setSize(18)
     debug_heading.setStyle("bold")
-    debug_heading.draw(win)
+    debug_heading.draw(game_board)
 
     debug_info = gr.Text(gr.Point(550, 445),
                          '''
@@ -43,14 +43,14 @@ def initialize_board():
                          left to right,
                          for each playable (gray) square
                          
-                         score is from red's perspective
-                         (+ = winning)
+                         score is from the player's perspective
+                         (+ = player is winning)
                          ''')
     debug_info.setSize(6)
-    debug_info.draw(win)
+    debug_info.draw(game_board)
 
     divider = gr.Line(gr.Point(500, 0), gr.Point(500, 500))
-    divider.draw(win)
+    divider.draw(game_board)
 
     # This code will generate the connections between the squares on the board
     # This can be done manually, but it's arguably more interesting to do it algorithmically
@@ -120,18 +120,34 @@ def initialize_board():
                                         3: (row - 1, pos - 1)}
 
     pieces = []
-    # Initialize and draw the starting pieces
-    for piece_row in range(1, 4):
-        for piece_pos in range(1, 5):
-            piece = Piece(False, piece_row, piece_pos, real=True)
-            pieces.append(piece)
-    for piece_row in range(4, 6):
-        for piece_pos in range(1, 5):
-            pieces.append(None)
-    for piece_row in range(6, 9):
-        for piece_pos in range(1, 5):
-            piece = Piece(True, piece_row, piece_pos, real=True)
-            pieces.append(piece)
+    # If the player is playing red
+    if player_color is False:
+        # Initialize and draw the starting pieces
+        for piece_row in range(1, 4):
+            for piece_pos in range(1, 5):
+                piece = Piece(True, piece_row, piece_pos, real=True)
+                pieces.append(piece)
+        for piece_row in range(4, 6):
+            for piece_pos in range(1, 5):
+                pieces.append(None)
+        for piece_row in range(6, 9):
+            for piece_pos in range(1, 5):
+                piece = Piece(False, piece_row, piece_pos, real=True)
+                pieces.append(piece)
+    # If the player is playing black
+    if player_color is True:
+        # Initialize and draw the starting pieces
+        for piece_row in range(1, 4):
+            for piece_pos in range(1, 5):
+                piece = Piece(False, piece_row, piece_pos, real=True)
+                pieces.append(piece)
+        for piece_row in range(4, 6):
+            for piece_pos in range(1, 5):
+                pieces.append(None)
+        for piece_row in range(6, 9):
+            for piece_pos in range(1, 5):
+                piece = Piece(True, piece_row, piece_pos, real=True)
+                pieces.append(piece)
 
     # Initialize the squares, the squares are drawn in Square.__init__ since the square background never changes
     for square_row in range(1, 9):
@@ -205,17 +221,17 @@ class Piece:
         elif self.color is True:
             self.piece_template.setFill("Black")
         self.piece_template.undraw()
-        self.piece_template.draw(win)
+        self.piece_template.draw(game_board)
 
         if self.king:
             self.king_template.undraw()
-            self.king_template.draw(win)
+            self.king_template.draw(game_board)
         if not self.king:
             self.king_template.undraw()
 
         if self.highlight:
             self.highlight_template.undraw()
-            self.highlight_template.draw(win)
+            self.highlight_template.draw(game_board)
         if not self.highlight:
             self.highlight_template.undraw()
 
@@ -251,7 +267,7 @@ class Square:
             shading = gr.Rectangle(gr.Point(self.position.getX() - 25, self.position.getY() - 25),
                                    gr.Point(self.position.getX() + 25, self.position.getY() + 25))
             shading.setFill("grey")
-            shading.draw(win)
+            shading.draw(game_board)
 
             # Initialize the highlight template for future use
             self.highlight_template = gr.Circle(self.position, 3)
@@ -263,7 +279,7 @@ class Square:
 
         if self.highlight:
             self.highlight_template.undraw()
-            self.highlight_template.draw(win)
+            self.highlight_template.draw(game_board)
         else:
             self.highlight_template.undraw()
 
@@ -373,11 +389,11 @@ def search(start, squares_list):
     # Make sure that if the piece isn't a king, that it doesn't jump backwards
     # Only need to check this extra thing if the piece isn't a king
     if start.piece.king is False:
-        # If the piece is red
-        if start.piece.color is False:
+        # If the piece is at the top of the board
+        if start.piece.color is not player_color:
             # Can only jump downwards (forwards from red's perspective)
             allowed_jumps = [1, 2]
-        # If the piece is black
+        # If the piece is at the bottom of the board  # todo check all comments make sense with updated code
         else:
             # Can only jump upwards (forwards from black's perspective)
             allowed_jumps = [0, 3]
@@ -396,7 +412,7 @@ def search(start, squares_list):
                     moves.update({connection_square: [None]})
                 # if there is a piece, check if it's of the opposite color
                 elif connection_square.piece.color is not start.piece.color:
-                    # Reuse the previous connection direction so it only tries to capture in a straight line
+                    # Reuse the previous connection direction, so it only tries to capture in a straight line
                     other_side = connection_square.connections[connection_type]
                     # If there is a square on the other side (not reached edge of board)
                     if other_side is not None:
@@ -509,19 +525,19 @@ def move_piece(old_square, new_square, captured, squares_list):
     old_square.piece = None
 
     # Check to make the piece king if necessary
-    # If piece is red
-    if new_square.piece.color is False:
+    # If piece is computer's
+    if new_square.piece.color is not player_color:
         if new_square.row == 8:
             new_square.piece.king = True
-    # If piece is black
-    if new_square.piece.color is True:
+    # If piece is player's
+    if new_square.piece.color is player_color:
         if new_square.row == 1:
             new_square.piece.king = True
 
 
 def player_move():
     # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
-    click = win.getMouse()
+    click = game_board.getMouse()
     click_square_coordinates = click_get_square(click)
 
     # Draw the new connections and highlights
@@ -560,10 +576,10 @@ def player_move():
                             square.draw_square()
                             if square.piece is not None:
                                 square.piece.draw_piece()
-                    win.update()
+                    game_board.update()
 
                     # Detect whether / where to move the selected piece
-                    second_click = win.getMouse()
+                    second_click = game_board.getMouse()
                     second_click_square_coordinates = click_get_square(second_click)
                     if second_click_square_coordinates is not None:
                         second_click_square_object = \
@@ -585,7 +601,7 @@ def computer_move():
     # Then it evaluates each of these end positions (not every position along the way, just the end positions)
     # The criteria used right now is counting pieces, regular pieces worth 1 and kings worth 3
     # Maybe other more advanced evaluation criteria later
-    # Let the score be positive if it thinks red (the computer) is winning
+    # Let the score be positive if it thinks the player is winning
     # Now, for the layer one shallower than the one with the scores, for each position node on that layer,
     # if (for the positions on that layer) it's red (the computer's) turn, each position node will take on
     # the maximum score of its child nodes
@@ -601,14 +617,13 @@ def computer_move():
 
     # These are all the possible moves that the computer must look at:
     # moves = [[start_square, end_square, [captured, ...]], ...]
-    moves = find_moves(squares, False)
+    moves = find_moves(squares, not player_color)
 
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored
     # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
     for move in moves:
         moves_scored.append([move, 0])
-    del moves
 
     # Recursive algorithm to do minimax
     def minimax(board, turn, depth, moves, end_piece_moved, search_depth=4):
@@ -630,7 +645,7 @@ def computer_move():
             # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king (maybe)
 
             # TODO Add endgame strategy algorithm
-            # TODO Add king chasing down opponent piece and cornering opponent king feature
+            # TODO Add king chasing down opponent pieces and cornering opponent king feature
 
             # TODO Add piece formation and overextension evaluation
 
@@ -644,62 +659,60 @@ def computer_move():
 
             # TODO Use neural nets to play better
 
-            # TODO Fine tune some of the custom values (think about them more)
-
             # If there are no more possible moves
             if not moves:
                 # If it's the computer's turn, and it can't move
-                if turn is False:
-                    return -1_000_000
-                # If it's the player's turn, and they can't move
-                if turn is True:
+                if turn is not player_color:
                     return 1_000_000
+                # If it's the player's turn, and they can't move
+                if turn is player_color:
+                    return -1_000_000
 
             # Current scoring scheme:
             # 1 for normal piece, 3 for king
             # +0.1 if it's in the center 4x4
-            # an additional +0.15 on top of that if it's in the center 2x2
+            # an additional +0.05 on top of that if it's in the center 2x2
 
             # +0.5 bonus if it's a normal piece, and it's on one of the two back row squares
             # that control the whole back area
-            red_pieces_score = 0
-            black_pieces_score = 0
+            computer_pieces_score = 0
+            player_pieces_score = 0
             for row in board:
                 for square in row:
                     if square.piece is not None:
-                        if square.piece.color is False:
+                        if square.piece.color is not player_color:
                             # Check if piece is in center of board, slightly better position
                             if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
-                                red_pieces_score += 0.1
+                                computer_pieces_score += 0.1
                             if square.piece.row == 4 and square.piece.pos == 3 or \
                                     square.piece.row == 5 and square.piece.pos == 2:
-                                red_pieces_score += 0.15
+                                computer_pieces_score += 0.05
 
                             if square.piece.king is True:
-                                red_pieces_score += 3
+                                computer_pieces_score += 3
                             else:
-                                red_pieces_score += 1
+                                computer_pieces_score += 1
                                 # Check for the back row pieces
                                 if square.piece.row == 1 and square.piece.pos in [1, 3]:
-                                    red_pieces_score += 0.5
+                                    computer_pieces_score += 0.5
 
-                        if square.piece.color is True:
+                        if square.piece.color is player_color:
                             # Check if piece is in center of board, slightly better position
                             if square.piece.row in [3, 4, 5, 6] and square.piece.pos in [2, 3]:
-                                black_pieces_score += 0.1
+                                player_pieces_score += 0.1
                             if square.piece.row == 4 and square.piece.pos == 3 or \
                                     square.piece.row == 5 and square.piece.pos == 2:
-                                black_pieces_score += 0.15
+                                player_pieces_score += 0.05
 
                             if square.piece.king is True:
-                                black_pieces_score += 3
+                                player_pieces_score += 3
                             else:
-                                black_pieces_score += 1
+                                player_pieces_score += 1
                                 # Check for the back row pieces
                                 if square.piece.row == 8 and square.piece.pos in [2, 4]:
-                                    black_pieces_score += 0.5
+                                    player_pieces_score += 0.5
 
-            score = red_pieces_score - black_pieces_score
+            score = player_pieces_score - computer_pieces_score
             return score
 
         # Dynamically adjust the search depth depending on how complex the board position is
@@ -715,49 +728,21 @@ def computer_move():
             elif moves_count == 1:
                 new_search_depth = 12
 
-        # If it's red (the computer's) turn
-        if turn is False:
-            max_value = None
-            for move in moves:
-                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
-                # If the piece is red
-                new_end_piece_moved = False
-                if move[0].piece.color is False:
-                    if move[0].piece.king is False:
-                        if move[1].row in [6, 7]:
-                            new_end_piece_moved = True
-                # If the piece is black
-                if move[0].piece.color is True:
-                    if move[0].piece.king is False:
-                        if move[1].row in [2, 3]:
-                            new_end_piece_moved = True
-
-                new_virtual_squares = duplicate(board)
-                move_piece(move[0], move[1], move[2], new_virtual_squares)
-                new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
-                if max_value is None:
-                    max_value = new_value
-                else:
-                    if new_value > max_value:
-                        max_value = new_value
-            return max_value
-
-        # If it's black (the player's) turn
-        if turn is True:
+        # If it's the computer's turn
+        if turn is not player_color:
             min_value = None
             for move in moves:
                 # See if this move will move a piece to the end-zone, to decide if this branch must be continued
-                # If the piece is red
                 new_end_piece_moved = False
-                if move[0].piece.color is False:
+                # If the piece is from the side at the top of the board
+                if move[0].piece.color is not player_color:
                     if move[0].piece.king is False:
                         if move[1].row in [6, 7]:
                             new_end_piece_moved = True
-                # If the piece is black
-                if move[0].piece.color is True:
+                # If the piece is from the side at the bottom of the board
+                if move[0].piece.color is player_color:
                     if move[0].piece.king is False:
-                        if move[1].row in [1, 2]:
+                        if move[1].row in [2, 3]:
                             new_end_piece_moved = True
 
                 new_virtual_squares = duplicate(board)
@@ -771,23 +756,52 @@ def computer_move():
                         min_value = new_value
             return min_value
 
+        # If it's the player's turn
+        if turn is player_color:
+            max_value = None
+            for move in moves:
+                # See if this move will move a piece to the end-zone, to decide if this branch must be continued
+                new_end_piece_moved = False
+                # If the piece is from the side at top of board
+                if move[0].piece.color is not player_color:
+                    if move[0].piece.king is False:
+                        if move[1].row in [6, 7]:
+                            new_end_piece_moved = True
+                # If the piece is from the side at bottom of board
+                if move[0].piece.color is player_color:
+                    if move[0].piece.king is False:
+                        if move[1].row in [1, 2]:
+                            new_end_piece_moved = True
+
+                new_virtual_squares = duplicate(board)
+                move_piece(move[0], move[1], move[2], new_virtual_squares)
+                new_value = minimax(new_virtual_squares, not turn, depth + 1,
+                                    find_moves(new_virtual_squares, not turn), new_end_piece_moved, new_search_depth)
+                if max_value is None:
+                    max_value = new_value
+                else:
+                    if new_value > max_value:
+                        max_value = new_value
+            return max_value
+
     for move in moves_scored:
         new_virtual_squares = duplicate(squares)
         move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, True, 1, find_moves(new_virtual_squares, True), False)
+        move[1] = minimax(new_virtual_squares, player_color, 1, find_moves(new_virtual_squares, player_color), False)
 
-    # Pick out the move(s) with the highest score in moves_scored, and pick random move from the move(s)
-    highest = None
+    # Pick out the move(s) with the lowest score in moves_scored (meaning worst for player, best for computer),
+    # and pick random move from the move(s)
+    lowest = None
     best_moves = []
     for i, move in enumerate(moves_scored):
-        if highest is None:
-            highest = moves_scored[i][1]
+        if lowest is None:
+            lowest = moves_scored[i][1]
             best_moves.append(move)
         else:
-            if moves_scored[i][1] == highest:
+            if moves_scored[i][1] == lowest:
                 best_moves.append(move)
-            elif moves_scored[i][1] > highest:
-                highest = moves_scored[i][1]
+            elif moves_scored[i][1] < lowest:
+                lowest = moves_scored[i][1]
                 best_moves.clear()
                 best_moves.append(move)
 
@@ -806,26 +820,26 @@ def computer_move():
     moves_display.clear()
     line = 60
     for move in moves_scored:
-        if move[1] > 100_000:
-            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                f"{move[0][1].row} {move[0][1].pos} : Computer win")
-        elif move[1] < -100_000:
+        score = move[1]
+        if score > 100_000:
             text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
                                                 f"{move[0][1].row} {move[0][1].pos} : Player win")
+        elif score < -100_000:
+            text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
+                                                f"{move[0][1].row} {move[0][1].pos} : Computer win")
         else:
             text = gr.Text(gr.Point(575, line), f"{move[0][0].row} {move[0][0].pos} to "
-                                                f"{move[0][1].row} {move[0][1].pos} : {move[1]:.2f}")
+                                                f"{move[0][1].row} {move[0][1].pos} : {score:.2f}")
         text.setSize(10)
         moves_display.append(text)
         line += 15
     for move in moves_display:
-        move.draw(win)
+        move.draw(game_board)
 
     return True
 
 
 # Initialize game
-# squares list is actively used, pieces array is for initialization purposes only
 squares = [[],
            [],
            [],
@@ -834,6 +848,24 @@ squares = [[],
            [],
            [],
            []]
+
+# Player select player color
+color_selector = gr.GraphWin("Select Color", 350, 200)
+black_box = gr.Circle(gr.Point(100, 100), 50)
+black_box.setFill("black")
+black_box.draw(color_selector)
+red_box = gr.Circle(gr.Point(250, 100), 50)
+red_box.setFill("red3")
+red_box.draw(color_selector)
+while True:
+    select = color_selector.getMouse()
+    if 50 <= select.getX() <= 150 and 50 <= select.getY() <= 150:
+        player_color = True
+        break
+    if 200 <= select.getX() <= 300 and 50 <= select.getY() <= 150:
+        player_color = False
+        break
+color_selector.close()
 
 initialize_board()
 
@@ -844,7 +876,6 @@ player_won, computer_won = False, False
 
 # Black moves first
 turn = True
-# TODO Make color selection functionality
 # Main game loop
 while True:
     # Erase old highlights and displayed connections (from last loop)
@@ -861,16 +892,16 @@ while True:
             square.draw_square()
             if square.piece is not None:
                 square.piece.draw_piece()
-    win.update()
+    game_board.update()
 
     # If it's the player's turn
-    if turn is True:
+    if turn is player_color:
         # Check if the player is able to move
         able = False
         for row in squares:
             for square in row:
                 if square.piece is not None:
-                    if square.piece.color is True:
+                    if square.piece.color is player_color:
                         if search(square, squares) != {}:
                             able = True
                             break
@@ -888,7 +919,7 @@ while True:
         for row in squares:
             for square in row:
                 if square.piece is not None:
-                    if square.piece.color is False:
+                    if square.piece.color is not player_color:
                         if search(square, squares) != {}:
                             able = True
                             break
@@ -907,11 +938,14 @@ while True:
 if player_won:
     player_won_text = gr.Text(gr.Point(250, 25), "Player Won")
     player_won_text.setSize(16)
-    player_won_text.draw(win)
+    if player_color is False:
+        player_won_text.setTextColor("red3")
+    player_won_text.draw(game_board)
 elif computer_won:
     computer_won_text = gr.Text(gr.Point(250, 25), "Computer Won")
     computer_won_text.setSize(16)
-    computer_won_text.setTextColor("red3")
-    computer_won_text.draw(win)
+    if player_color is True:
+        computer_won_text.setTextColor("red3")
+    computer_won_text.draw(game_board)
 
-win.getKey()
+game_board.getKey()
