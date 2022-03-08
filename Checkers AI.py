@@ -716,6 +716,7 @@ def computer_move():
             score = player_pieces_score - computer_pieces_score
             return score
 
+        # todo improve dynamic search depth adjustments
         # Dynamically adjust the search depth depending on how complex the board position is
         new_search_depth = 4
         if not capturing:  # If there are force jumps, the complexity would appear artificially low
