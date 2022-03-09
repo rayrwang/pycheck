@@ -5,9 +5,10 @@
 
 import graphics as gr
 import random
+import concurrent.futures
 
 # The game board
-game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)
+game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)  # todo switch graphics to pygame
 
 
 def initialize_board():
@@ -593,7 +594,7 @@ def player_move():
                             return True
 
 
-# Computer makes a move (with intelligence)
+# Computer makes a move
 def computer_move():
     # The computer uses the minimax algorithm to decide how to move next
     # Basically, the algorithm makes a tree with all possible future moves as deep as possible, limited by
@@ -785,10 +786,18 @@ def computer_move():
                         max_value = new_value
             return max_value
 
-    for move in moves_scored:
-        new_virtual_squares = duplicate(squares)
-        move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
-        move[1] = minimax(new_virtual_squares, player_color, 1, find_moves(new_virtual_squares, player_color), False)
+    def add():
+        return 4
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        processes = []
+        for move in moves_scored:
+            new_virtual_squares = duplicate(squares)
+            move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares)
+            process = executor.submit(add)
+            processes.append(process)
+        for num, move in enumerate(moves_scored):
+            move[1] = processes[num].result()
 
     # Pick out the move(s) with the lowest score in moves_scored (meaning worst for player, best for computer),
     # and pick random move from the move(s)
@@ -836,6 +845,17 @@ def computer_move():
         line += 15
     for move in moves_display:
         move.draw(game_board)
+
+    return True
+
+
+def test():
+    def hello(a):
+        print(a)
+
+    with concurrent.futures.ProcessPoolExecutor as executor:
+        process = executor.submit(hello, "Hello")
+        a = process.result
 
     return True
 
@@ -929,7 +949,7 @@ while True:
             player_won = True
             break
 
-        moved = computer_move()
+        moved = test()
 
     # Only flip whose turn it is if the player actually made a move
     if moved:
