@@ -388,7 +388,7 @@ def search(start, squares_list):
 
     # Make sure that if the piece isn't a king, that it doesn't jump backwards
     # Only need to check this extra thing if the piece isn't a king
-    if start.piece.king is False:  # fixme There might be a problem with this in computer's projections, take a look
+    if start.piece.king is False:
         # If the piece is at the top of the board
         if start.piece.color is not player_color:
             # Can only jump downwards (forwards from red's perspective)
@@ -642,8 +642,6 @@ def computer_move():
         if depth > search_depth and not capturing and not end_piece_moved or moves == []:
             # Analyze the current board situation to give it a score
             # Looking for how many pieces each side has
-
-            # FIXME Flaw with algorithm? Will sacrifice pieces to try to prevent king (maybe)
 
             # TODO Add endgame strategy algorithm
             # TODO Add king chasing down opponent pieces and cornering opponent king feature
