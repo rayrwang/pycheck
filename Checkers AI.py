@@ -595,6 +595,7 @@ def player_move(turn, squares, player_color, game_board):
 
 # Recursive algorithm to do minimax, used in next function computer_move()
 def minimax(board, turn, depth, moves, end_piece_moved, search_depth, player_color):
+    # fixme scoring algorithm seems to have serious problems especially in endgame, fix it
     # end_piece_moved is whether a piece in the end-zone move last move, if yes, must continue this branch
 
     # If there are captures, these need to be looked at, even if the default search depth is exceeded
