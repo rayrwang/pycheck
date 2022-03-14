@@ -683,6 +683,9 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
                             if square.piece.row == 8 and square.piece.pos in [2, 4]:
                                 player_pieces_score += 0.5
 
+        # todo How to implement endgame strategy?
+        # Provide incentive to move towards opponent's pieces if computer is winning?
+
         score = player_pieces_score - computer_pieces_score
         return score
 
