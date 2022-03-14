@@ -612,7 +612,7 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
 
     # Check if reached end of branch (certain depth reached and no further captures
     # and no pieces near the end-zone moves), or no more possible moves
-    if depth > search_depth and not capturing and not end_piece_moved or moves == []:
+    if depth >= search_depth and not capturing and not end_piece_moved or moves == []:
         # Analyze the current board situation to give it a score
         # Looking for how many pieces each side has
 
@@ -688,13 +688,13 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
 
     # todo improve dynamic search depth adjustments, using timer?
     # Dynamically adjust the search depth depending on how complex the board position is
-    new_search_depth = 5
+    new_search_depth = 6
     if not capturing:  # If there are force jumps, the complexity would appear artificially low
         moves_count = len(moves)
-        if moves_count in [4, 5]:
-            new_search_depth = 6
+        if moves_count == 4:
+            new_search_depth = 7
         elif moves_count == 3:
-            new_search_depth = 8
+            new_search_depth = 9
         elif moves_count == 2:
             new_search_depth = 12
         elif moves_count == 1:
@@ -794,7 +794,7 @@ def computer_move(squares, player_color, moves_display, game_board):
         for move in moves_scored:
             new_virtual_squares = duplicate(squares)
             move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares, player_color)
-            process = executor.submit(minimax, new_virtual_squares, player_color, 1, False, 5, player_color)
+            process = executor.submit(minimax, new_virtual_squares, player_color, 1, False, 6, player_color)
             processes.append(process)
         for num, move in enumerate(moves_scored):
             move[1] = processes[num].result()
