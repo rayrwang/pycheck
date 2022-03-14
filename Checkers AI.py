@@ -685,6 +685,7 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
 
         # todo How to implement endgame strategy?
         # Provide incentive to move towards opponent's pieces if computer is winning?
+        # And stay near safe corners if losing
 
         score = player_pieces_score - computer_pieces_score
         return score
