@@ -639,6 +639,7 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
             if turn is player_color:
                 return -1_000_000
 
+        # todo Adjust scoring scheme? More locations / different values
         # Current scoring scheme:
         # 1 for normal piece, 3 for king
         # +0.1 if it's in the center 4x4
