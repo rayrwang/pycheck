@@ -687,6 +687,7 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
         # Provide incentive to move towards opponent's pieces if computer is winning?
         # And stay near safe corners if losing
         # Advance regular pieces to get more kings if winning
+        # Add condition end_piece_moves satisfied if there are few pieces and a normal piece moved
 
         score = player_pieces_score - computer_pieces_score
         return score
