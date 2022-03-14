@@ -123,45 +123,48 @@ def initialize_board(player_color, squares, game_board):
         # Initialize and draw the starting pieces
         for piece_row in range(1, 4):
             for piece_pos in range(1, 5):
-                piece = Piece(True, piece_row, piece_pos, game_board, real=True)
+                piece = Piece(True, piece_row, piece_pos, real=True, game_board=game_board)
                 pieces.append(piece)
         for piece_row in range(4, 6):
             for piece_pos in range(1, 5):
                 pieces.append(None)
         for piece_row in range(6, 9):
             for piece_pos in range(1, 5):
-                piece = Piece(False, piece_row, piece_pos, game_board, real=True)
+                piece = Piece(False, piece_row, piece_pos, real=True, game_board=game_board)
                 pieces.append(piece)
     # If the player is playing black
     if player_color is True:
         # Initialize and draw the starting pieces
         for piece_row in range(1, 4):
             for piece_pos in range(1, 5):
-                piece = Piece(False, piece_row, piece_pos, game_board, real=True)
+                piece = Piece(False, piece_row, piece_pos, real=True, game_board=game_board)
                 pieces.append(piece)
         for piece_row in range(4, 6):
             for piece_pos in range(1, 5):
                 pieces.append(None)
         for piece_row in range(6, 9):
             for piece_pos in range(1, 5):
-                piece = Piece(True, piece_row, piece_pos,game_board, real=True)
+                piece = Piece(True, piece_row, piece_pos, real=True, game_board=game_board)
                 pieces.append(piece)
 
-    # Initialize the squares, the squares are drawn in Square.__init__ since the square background never changes
+    # Initialize the squares, the squares are drawn in Square.__init__() since the square background never changes
     for square_row in range(1, 9):
         for square_pos in range(1, 5):
             square = Square(square_row, square_pos, connections_dict[(square_row, square_pos)],
-                            pieces[square_row * 4 - 5 + square_pos], game_board, real=True)
+                            pieces[square_row * 4 - 5 + square_pos], real=True, game_board=game_board)
             squares[square_row - 1].append(square)
 
 
 class Piece:
-    def __init__(self, color, row, pos, game_board, king=False, highlight=False, real=False):
-        # "color": False = red, True = Black
-        # "row": Rows are numbered 1 to 8, top to bottom
-        # "pos": Square in each row, 1 to 4, left to right
-        # "highlight": Whether the player has highlighted the piece (about to move it)
-        # "real': Whether the piece is on the real board, or is just part of the computer's thinking process
+    def __init__(self, color, row, pos, king=False, highlight=False, real=False, game_board=None):
+        """color: False = red, True = Black
+        row: Rows are numbered 1 to 8, top to bottom
+        pos: Square in each row, 1 to 4, left to right
+        king: Whether the piece is a king
+        highlight: Whether the player has highlighted the piece (about to move it)
+        real: Whether the piece is on the real board, or is just part of the computer's thinking process
+        game_board: The game board (gr.GraphWin) that the piece belongs to
+        """
 
         self.color = color
         self.row = row
@@ -192,7 +195,7 @@ class Piece:
             self.highlight_template.setOutline("gold")
 
     def draw_piece(self):
-        # Update the templates for the three parts of a piece: the piece itself, and symbols for king or highlighted
+        # Updates the templates for the three parts of a piece: the piece itself, and symbols for king or highlighted
 
         self.piece_template.undraw()
         self.king_template.undraw()
@@ -216,7 +219,8 @@ class Piece:
         # Converts piece attributes into graphics.py objects and draws them
 
         if self.color is False:
-            self.piece_template.setFill("red3")
+            self.piece_template.setFill("red4")
+            self.piece_template.setOutline("red4")
         elif self.color is True:
             self.piece_template.setFill("Black")
         self.piece_template.undraw()
@@ -241,14 +245,16 @@ class Piece:
 
 
 class Square:
-    def __init__(self, row, pos, connections, piece, game_board, highlight=False, real=False):
-        # row and pos specify position of square (same convention as position of piece)
-        # highlight shows if square is highlighted, this is used when a piece is clicked, to show possible moves
-        # connections is dictionary with {connection type <int>: connected square <tuple>}
-        # connected squares are tuples specified with row and pos (position in row); (row, pos): 1 to 8, 1 to 4
-        # Connection type ranges from 0 to 3: top right, bottom right, bottom left, top left: from perspective of self
-        # piece is which piece currently occupies this square
-        # real is whether the square is part of the board that is being played on, or is just in the computer's thoughts
+    def __init__(self, row, pos, connections, piece, highlight=False, real=False, game_board=None):
+        """row, pos: specify position of square (same convention as position of piece)
+        highlight: If square is highlighted, this is used when a piece is clicked, to show possible moves
+        connections: Dictionary with {connection type <int>: connected square <tuple>}
+        connected squares are tuples specified with row and pos (position in row); (row, pos): 1 to 8, 1 to 4
+        Connection type ranges from 0 to 3: top right, bottom right, bottom left, top left: from perspective of self
+        piece: Which piece currently occupies this square
+        real: Whether the square is part of the real game board, or is just in the computer's projections
+        game_board: Which board (gr.GraphWin) the square belongs to
+        """
 
         self.row = row
         self.pos = pos
@@ -284,31 +290,105 @@ class Square:
             self.highlight_template.undraw()
 
 
+def click_get_square(point):
+    # Figure out which square was clicked from coordinates of mouse click
+    # Returns square as tuple: row, pos (same convention as piece position)
+
+    x = point.getX()
+    y = point.getY()
+
+    # check if coordinates are in board
+    if not (50 < x < 450 and 50 < y < 450):
+        return None
+
+    # Convert coordinates to sections (50 x 50 area of board), then convert to row and position in row
+    x = round((x / 50) - 0.5)
+    y = round((y / 50) - 0.5)
+
+    row = y
+    if row % 2 == 1:
+        if x % 2 == 1:
+            return None
+        else:
+            pos = x / 2
+    else:
+        if x % 2 == 1:
+            pos = (x + 1) / 2
+        else:
+            return None
+
+    return row, int(pos)
+
+
 # I guess this function is kind of like deepcopy, but I couldn't figure out how to make deepcopy work
 def duplicate(squares_list):
-    virtual_squares = [[[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []],
-                       [[], [], [], []]]
+    new_squares = [[None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None],
+                   [None, None, None, None]]
     for i, row in enumerate(squares_list):
         for j, square in enumerate(row):
             if square.piece is not None:
-                virtual_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
-                                      square.piece.king, square.piece.highlight)
-                virtual_squares[i][j] = Square(square.row, square.pos, square.connections,
-                                               virtual_piece, square.highlight)
+                new_piece = Piece(square.piece.color, square.piece.row, square.piece.pos,
+                                  square.piece.king)
+                new_squares[i][j] = Square(square.row, square.pos, square.connections,
+                                           new_piece)
             else:
-                virtual_squares[i][j] = Square(square.row, square.pos, square.connections,
-                                               None, square.highlight)
-    return virtual_squares
+                new_squares[i][j] = Square(square.row, square.pos, square.connections,
+                                           None)
+    return new_squares
 
 
-# Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)
+def move_piece(old_square, new_square, captured, squares_list, player_color):
+    """Move a piece from the old square to the new square"""
+    # Figure out which squares in squares_list are representative of the squares to be moved
+    # This means find squares which aren't necessarily the same object, but have the same attributes (row and position)
+    captured_copy = []
+    for row in squares_list:
+        for square in row:
+            if square.row == old_square.row and square.pos == old_square.pos:
+                old_square = square
+                continue
+            if square.row == new_square.row and square.pos == new_square.pos:
+                new_square = square
+                continue
+            if captured != [None]:
+                for captured_square in captured:
+                    if square.row == captured_square.row and square.pos == captured_square.pos:
+                        captured_copy.append(square)
+                        continue
+
+    if captured_copy is not None:
+        for captured_square in captured_copy:
+            if captured_square is not None:
+                if captured_square.piece is not None:
+                    if captured_square.piece.real:
+                        captured_square.piece.undraw_piece()
+                    captured_square.piece = None
+
+    new_square.piece = old_square.piece
+    new_square.piece.row = new_square.row
+    new_square.piece.pos = new_square.pos
+
+    old_square.piece = None
+
+    # Check to make the piece king if necessary
+    # If piece is computer's
+    if new_square.piece.color is not player_color:
+        if new_square.row == 8:
+            new_square.piece.king = True
+    # If piece is player's
+    if new_square.piece.color is player_color:
+        if new_square.row == 1:
+            new_square.piece.king = True
+
+
 def find_moves(squares_list, side, player_color):
+    """Finds all the possible moves for a certain side (red or black), from a certain board position (squares_list)"""
     # Figure out if there are any force jumps, and what they are
     force_jumps = []
     for row in squares_list:
@@ -345,40 +425,9 @@ def find_moves(squares_list, side, player_color):
     return moves_flat
 
 
-def click_get_square(point):
-    # Figure out which square was clicked from coordinates of mouse click
-    # Returns square as tuple: row, pos (same convention as piece position)
-
-    x = point.getX()
-    y = point.getY()
-
-    # check if coordinates are in board
-    if not (50 < x < 450 and 50 < y < 450):
-        return None
-
-    # Convert coordinates to sections (50 x 50 area of board), then convert to row and position in row
-    x = round((x / 50) - 0.5)
-    y = round((y / 50) - 0.5)
-
-    row = y
-    if row % 2 == 1:
-        if x % 2 == 1:
-            return None
-        else:
-            pos = x / 2
-    else:
-        if x % 2 == 1:
-            pos = (x + 1) / 2
-        else:
-            return None
-
-    return row, int(pos)
-
-
-# fixme Rearrange the order of the functions to make more sense
-# Finds all the possible moves for the piece on a certain square
 def search(start, squares_list, player_color):
-    # square_list is whether searching "squares" or "virtual_squares"
+    """Finds all the possible moves for the piece on a certain square"""
+    # square_list is what game board it's going to search on
 
     # start is which square <Square> to start the search from
     # search() outputs dictionary {possible_move_1 <Square>: [captured pieces <Square>, ...], ...}
@@ -491,50 +540,6 @@ def search(start, squares_list, player_color):
     return moves
 
 
-# Move a piece from the old square to the new square
-def move_piece(old_square, new_square, captured, squares_list, player_color):
-    # Figure out which squares in squares_list are representative of the squares to be moved
-    # This means find squares which aren't necessarily the same object, but have the same attributes (row and position)
-    captured_copy = []
-    for row in squares_list:
-        for square in row:
-            if square.row == old_square.row and square.pos == old_square.pos:
-                old_square = square
-                continue
-            if square.row == new_square.row and square.pos == new_square.pos:
-                new_square = square
-                continue
-            if captured != [None]:
-                for captured_square in captured:
-                    if square.row == captured_square.row and square.pos == captured_square.pos:
-                        captured_copy.append(square)
-                        continue
-
-    if captured_copy is not None:
-        for captured_square in captured_copy:
-            if captured_square is not None:
-                if captured_square.piece is not None:
-                    if captured_square.piece.real:
-                        captured_square.piece.undraw_piece()
-                    captured_square.piece = None
-
-    new_square.piece = old_square.piece
-    new_square.piece.row = new_square.row
-    new_square.piece.pos = new_square.pos
-
-    old_square.piece = None
-
-    # Check to make the piece king if necessary
-    # If piece is computer's
-    if new_square.piece.color is not player_color:
-        if new_square.row == 8:
-            new_square.piece.king = True
-    # If piece is player's
-    if new_square.piece.color is player_color:
-        if new_square.row == 1:
-            new_square.piece.king = True
-
-
 def player_move(turn, squares, player_color, game_board):
     # Get the coordinates of mouse click, and converts it to square on board, <None> if not on a playable square
     click = game_board.getMouse()
@@ -593,10 +598,9 @@ def player_move(turn, squares, player_color, game_board):
                             return True
 
 
-# Recursive algorithm to do minimax, used in next function computer_move()
-def minimax(board, turn, depth, moves, end_piece_moved, search_depth, player_color):
-    # fixme scoring algorithm seems to have serious problems especially in endgame, fix it
-    # end_piece_moved is whether a piece in the end-zone move last move, if yes, must continue this branch
+def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
+    """Recursive algorithm to do minimax move evaluation, used in next function computer_move()"""
+    moves = find_moves(board, turn, player_color)
 
     # If there are captures, these need to be looked at, even if the default search depth is exceeded
     # Otherwise the results will be skewed since a capture may be detected, but not the recapture afterwards
@@ -715,8 +719,7 @@ def minimax(board, turn, depth, moves, end_piece_moved, search_depth, player_col
 
             new_virtual_squares = duplicate(board)
             move_piece(move[0], move[1], move[2], new_virtual_squares, player_color)
-            new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                find_moves(new_virtual_squares, not turn, player_color), new_end_piece_moved,
+            new_value = minimax(new_virtual_squares, not turn, depth + 1, new_end_piece_moved,
                                 new_search_depth, player_color)
             if min_value is None:
                 min_value = new_value
@@ -744,8 +747,7 @@ def minimax(board, turn, depth, moves, end_piece_moved, search_depth, player_col
 
             new_virtual_squares = duplicate(board)
             move_piece(move[0], move[1], move[2], new_virtual_squares, player_color)
-            new_value = minimax(new_virtual_squares, not turn, depth + 1,
-                                find_moves(new_virtual_squares, not turn, player_color), new_end_piece_moved,
+            new_value = minimax(new_virtual_squares, not turn, depth + 1, new_end_piece_moved,
                                 new_search_depth, player_color)
             if max_value is None:
                 max_value = new_value
@@ -755,12 +757,8 @@ def minimax(board, turn, depth, moves, end_piece_moved, search_depth, player_col
         return max_value
 
 
-# Computer makes a move
 def computer_move(squares, player_color, moves_display, game_board):
-    # fixme Algorithm seems to be good at beginning but bad at endgame, what's going on?
-    # fixme Maybe since endgame is more about strategy of moving kings, rather than brute force tactics
-    # todo So need endgame strategy algorithm
-    # fixme Maybe there's a flaw with the algorithm predicting movement of kings, take a look
+    """Computer makes a move"""
     # The computer uses the minimax algorithm to decide how to move next
     # Basically, the algorithm makes a tree with all possible future moves as deep as possible, limited by
     # processing power and memory
@@ -796,14 +794,16 @@ def computer_move(squares, player_color, moves_display, game_board):
         for move in moves_scored:
             new_virtual_squares = duplicate(squares)
             move_piece(move[0][0], move[0][1], move[0][2], new_virtual_squares, player_color)
-            process = executor.submit(minimax, new_virtual_squares, player_color, 1,
-                                      find_moves(new_virtual_squares, player_color, player_color),
-                                      False, 5, player_color)
+            process = executor.submit(minimax, new_virtual_squares, player_color, 1, False, 5, player_color)
             processes.append(process)
         for num, move in enumerate(moves_scored):
             move[1] = processes[num].result()
 
     # todo refactor code, fix variable shadowing?
+
+    # Round numbers to 2 decimal places to get rid of binary rounding error
+    for move in moves_scored:
+        move[1] = round(move[1], 2)
 
     # Pick out the move(s) with the lowest score in moves_scored (meaning worst for player, best for computer),
     # and pick random move from the move(s)
@@ -856,6 +856,7 @@ def computer_move(squares, player_color, moves_display, game_board):
 
 
 def main():
+    """Main game loop"""
     # The game board
     game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)  # todo switch graphics to pygame
 
@@ -875,7 +876,8 @@ def main():
     black_box.setFill("black")
     black_box.draw(color_selector)
     red_box = gr.Circle(gr.Point(250, 100), 50)
-    red_box.setFill("red3")
+    red_box.setFill("red4")
+    red_box.setOutline("red4")
     red_box.draw(color_selector)
     while True:
         select = color_selector.getMouse()
