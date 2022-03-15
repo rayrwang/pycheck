@@ -864,19 +864,6 @@ def computer_move(squares, player_color, moves_display, game_board):
 
 def main():
     """Main game loop"""
-    # The game board
-    game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)  # todo switch graphics to pygame
-
-    # Initialize game
-    squares = [[],
-               [],
-               [],
-               [],
-               [],
-               [],
-               [],
-               []]
-
     # Player select player color
     color_selector = gr.GraphWin("Select Color", 350, 200)
     black_box = gr.Circle(gr.Point(100, 100), 50)
@@ -895,6 +882,19 @@ def main():
             player_color = False
             break
     color_selector.close()
+
+    # The game board
+    game_board = gr.GraphWin("Checkers AI", 650, 500, autoflush=False)  # todo switch graphics to pygame
+
+    # Initialize game
+    squares = [[],
+               [],
+               [],
+               [],
+               [],
+               [],
+               [],
+               []]
 
     initialize_board(player_color, squares, game_board)
 
