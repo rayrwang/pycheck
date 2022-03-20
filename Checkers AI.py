@@ -790,6 +790,8 @@ def computer_move(squares, player_color, moves_display, game_board):
     # moves = [[start_square, end_square, [captured, ...]], ...]
     moves = find_moves(squares, not player_color, player_color)
 
+    # todo make only evaluate if more than 1 move possible
+
     moves_scored = []  # Holds a score for how good a move is
     # Initialize moves_scored
     # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
