@@ -796,7 +796,7 @@ def computer_move(squares, player_color, moves_display, game_board):
     # Initialize moves_scored
     # moves_scored = [[[start_square, end_square, [captured, ...]], score], ...]
     for move in moves:
-        moves_scored.append([move, 0])
+        moves_scored.append([move, None])
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
         processes = []
@@ -808,7 +808,7 @@ def computer_move(squares, player_color, moves_display, game_board):
         for num, move in enumerate(moves_scored):
             move[1] = processes[num].result()
 
-    # todo refactor code, fix variable shadowing?
+    # todo Refactor code? Fix variable shadowing?
 
     # Round numbers to 2 decimal places to get rid of binary rounding error
     for move in moves_scored:
