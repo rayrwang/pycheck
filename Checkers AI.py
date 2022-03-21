@@ -689,6 +689,7 @@ def minimax(board, turn, depth, end_piece_moved, search_depth, player_color):
         # And stay near safe corners if losing
         # Advance regular pieces to get more kings if winning
         # Add condition end_piece_moves satisfied if there are few pieces and a normal piece moved
+        # fixme Problem that computer will sacrifice pieces to try to prevent king?
 
         score = player_pieces_score - computer_pieces_score
         return score
