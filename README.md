@@ -1,1 +1,15 @@
-Algorithms used are very naive.
+# py3d
+
+### Installation
+```
+git clone https://github.com/rwang7839/pycheck.git
+
+# Required
+pip install graphics.py
+```
+
+### Play
+```
+cd pycheck
+python main.py
+```
