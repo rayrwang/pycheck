@@ -1,4 +1,4 @@
-# py3d
+# pycheck
 
 ### Installation
 ```
