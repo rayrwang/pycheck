@@ -1,8 +1,3 @@
-# Jan 24, 2022
-
-# Modules required:
-# graphics.py: http://www.cs.uky.edu/~keen/help/Zelle-graphics-reference.pdf
-
 import graphics as gr
 import random
 import concurrent.futures
